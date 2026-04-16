@@ -21,6 +21,7 @@ class DietaryApp extends StatelessWidget {
     return MaterialApp(
       title: '私人饮食助理',
       theme: AppTheme.build(),
+      debugShowCheckedModeBanner: false,
       home: const MainShell(),
     );
   }
@@ -49,48 +50,115 @@ class _MainShellState extends State<MainShell> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.bg,
       body: IndexedStack(index: _index, children: _screens),
-      bottomNavigationBar: NavigationBar(
+      bottomNavigationBar: _ClayNavBar(
         selectedIndex: _index,
-        onDestinationSelected: (i) => setState(() => _index = i),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home),
-            label: '首页',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.kitchen_outlined),
-            selectedIcon: Icon(Icons.kitchen),
-            label: '冰箱',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.celebration_outlined),
-            selectedIcon: Icon(Icons.celebration),
-            label: '宴请',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.bar_chart_outlined),
-            selectedIcon: Icon(Icons.bar_chart),
-            label: '营养',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.chat_outlined),
-            selectedIcon: Icon(Icons.chat),
-            label: '管家',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.psychology_outlined),
-            selectedIcon: Icon(Icons.psychology),
-            label: '记忆',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.settings_outlined),
-            selectedIcon: Icon(Icons.settings),
-            label: '设置',
-          ),
-        ],
+        onTap: (i) => setState(() => _index = i),
       ),
     );
   }
+}
+
+class _ClayNavBar extends StatelessWidget {
+  final int selectedIndex;
+  final ValueChanged<int> onTap;
+
+  const _ClayNavBar({required this.selectedIndex, required this.onTap});
+
+  static const _items = [
+    _NavItem(icon: Icons.home_rounded, label: '首页'),
+    _NavItem(icon: Icons.kitchen_rounded, label: '冰箱'),
+    _NavItem(icon: Icons.celebration_rounded, label: '宴请'),
+    _NavItem(icon: Icons.bar_chart_rounded, label: '营养'),
+    _NavItem(icon: Icons.chat_bubble_rounded, label: '管家'),
+    _NavItem(icon: Icons.psychology_rounded, label: '记忆'),
+    _NavItem(icon: Icons.settings_rounded, label: '设置'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.bgCard,
+        border: const Border(
+          top: BorderSide(color: AppColors.border, width: 2),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.shadowOuter,
+            blurRadius: 12,
+            offset: const Offset(0, -3),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          height: 64,
+          child: Row(
+            children: List.generate(_items.length, (i) {
+              final selected = i == selectedIndex;
+              return Expanded(
+                child: GestureDetector(
+                  onTap: () => onTap(i),
+                  behavior: HitTestBehavior.opaque,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    curve: Curves.easeOutCubic,
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          curve: Curves.easeOutBack,
+                          width: selected ? 44 : 36,
+                          height: selected ? 32 : 28,
+                          decoration: selected
+                              ? BoxDecoration(
+                                  color: AppColors.primarySoft,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                      color: AppColors.primaryLight, width: 1.5),
+                                )
+                              : null,
+                          child: Icon(
+                            _items[i].icon,
+                            size: selected ? 22 : 20,
+                            color: selected
+                                ? AppColors.primary
+                                : AppColors.textLight,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          _items[i].label,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: selected
+                                ? FontWeight.w700
+                                : FontWeight.w400,
+                            color: selected
+                                ? AppColors.primary
+                                : AppColors.textLight,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _NavItem {
+  final IconData icon;
+  final String label;
+  const _NavItem({required this.icon, required this.label});
 }
