@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import '../theme/app_theme.dart';
 import '../services/api_service.dart';
 
 class NutritionScreen extends StatefulWidget {
@@ -30,106 +31,356 @@ class _NutritionScreenState extends State<NutritionScreen> {
     }
   }
 
+  void _changeDate(int days) {
+    setState(() {
+      _date = DateTime.parse(_date).add(Duration(days: days)).toIso8601String().substring(0, 10);
+    });
+    _load();
+  }
+
   @override
   Widget build(BuildContext context) {
     final totals = _summary?['totals'] as Map<String, dynamic>? ?? {};
+    final calories = (totals['calories'] ?? 0) as num;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('营养追踪'), centerTitle: true),
+      backgroundColor: AppColors.bg,
+      appBar: AppBar(title: const Text('营养追踪 📊')),
+      floatingActionButton: GestureDetector(
+        onTap: _showAddDialog,
+        child: Container(
+          width: 56,
+          height: 56,
+          decoration: BoxDecoration(
+            color: AppColors.primary,
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: [BoxShadow(color: AppColors.primary.withOpacity(0.4), blurRadius: 12, offset: const Offset(2, 4))],
+          ),
+          child: const Icon(Icons.add_rounded, color: Colors.white, size: 28),
+        ),
+      ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
           : ListView(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
               children: [
-                Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  IconButton(icon: const Icon(Icons.chevron_left), onPressed: () {
-                    setState(() {
-                      _date = DateTime.parse(_date).subtract(const Duration(days: 1)).toIso8601String().substring(0, 10);
-                    });
-                    _load();
-                  }),
-                  Text(_date, style: const TextStyle(fontSize: 16)),
-                  IconButton(icon: const Icon(Icons.chevron_right), onPressed: () {
-                    setState(() {
-                      _date = DateTime.parse(_date).add(const Duration(days: 1)).toIso8601String().substring(0, 10);
-                    });
-                    _load();
-                  }),
-                ]),
-                const SizedBox(height: 16),
-                SizedBox(
-                  height: 200,
-                  child: BarChart(BarChartData(
-                    barGroups: [
-                      _bar(0, (totals['protein'] ?? 0).toDouble(), Colors.blue),
-                      _bar(1, (totals['carbs'] ?? 0).toDouble(), Colors.orange),
-                      _bar(2, (totals['fat'] ?? 0).toDouble(), Colors.red),
-                      _bar(3, (totals['fiber'] ?? 0).toDouble(), Colors.green),
-                    ],
-                    titlesData: FlTitlesData(
-                      bottomTitles: AxisTitles(sideTitles: SideTitles(
-                        showTitles: true,
-                        getTitlesWidget: (v, _) => Text(['蛋白', '碳水', '脂肪', '纤维'][v.toInt()], style: const TextStyle(fontSize: 11)),
-                      )),
-                      leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 32)),
-                      topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                      rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                // 日期选择器
+                _ClayCard(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.chevron_left_rounded, color: AppColors.textMid),
+                          onPressed: () => _changeDate(-1),
+                        ),
+                        Column(
+                          children: [
+                            Text(_date,
+                                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textDark)),
+                            Text(
+                              _date == DateTime.now().toIso8601String().substring(0, 10) ? '今天' : '',
+                              style: const TextStyle(fontSize: 11, color: AppColors.primary),
+                            ),
+                          ],
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.chevron_right_rounded, color: AppColors.textMid),
+                          onPressed: () => _changeDate(1),
+                        ),
+                      ],
                     ),
-                  )),
+                  ),
                 ),
-                const SizedBox(height: 16),
-                Text('总热量：${(totals['calories'] ?? 0).toStringAsFixed(0)} kcal',
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+                const SizedBox(height: 14),
+
+                // 热量大卡
+                _ClayCard(
+                  color: AppColors.primarySoft,
+                  borderColor: AppColors.primaryLight,
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 52,
+                          height: 52,
+                          decoration: BoxDecoration(
+                            color: AppColors.primary,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [BoxShadow(color: AppColors.primary.withOpacity(0.35), blurRadius: 8, offset: const Offset(2, 3))],
+                          ),
+                          child: const Icon(Icons.local_fire_department_rounded, color: Colors.white, size: 28),
+                        ),
+                        const SizedBox(width: 16),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('总热量', style: TextStyle(fontSize: 13, color: AppColors.textMid)),
+                            Text('${calories.toStringAsFixed(0)} kcal',
+                                style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w800, color: AppColors.textDark)),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+
+                // 营养柱状图
+                _ClayCard(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('营养分布',
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textDark)),
+                        const SizedBox(height: 16),
+                        SizedBox(
+                          height: 180,
+                          child: BarChart(BarChartData(
+                            gridData: FlGridData(
+                              show: true,
+                              drawVerticalLine: false,
+                              getDrawingHorizontalLine: (_) => FlLine(
+                                color: AppColors.border,
+                                strokeWidth: 1,
+                                dashArray: [4, 4],
+                              ),
+                            ),
+                            borderData: FlBorderData(show: false),
+                            barGroups: [
+                              _bar(0, (totals['protein'] ?? 0).toDouble(), AppColors.primary),
+                              _bar(1, (totals['carbs'] ?? 0).toDouble(), AppColors.yellow),
+                              _bar(2, (totals['fat'] ?? 0).toDouble(), AppColors.lavender),
+                              _bar(3, (totals['fiber'] ?? 0).toDouble(), AppColors.green),
+                            ],
+                            titlesData: FlTitlesData(
+                              bottomTitles: AxisTitles(sideTitles: SideTitles(
+                                showTitles: true,
+                                getTitlesWidget: (v, _) {
+                                  const labels = ['蛋白质', '碳水', '脂肪', '纤维'];
+                                  return Padding(
+                                    padding: const EdgeInsets.only(top: 6),
+                                    child: Text(labels[v.toInt()],
+                                        style: const TextStyle(fontSize: 11, color: AppColors.textMid)),
+                                  );
+                                },
+                              )),
+                              leftTitles: AxisTitles(sideTitles: SideTitles(
+                                showTitles: true,
+                                reservedSize: 36,
+                                getTitlesWidget: (v, _) => Text('${v.toInt()}g',
+                                    style: const TextStyle(fontSize: 10, color: AppColors.textLight)),
+                              )),
+                              topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                              rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                            ),
+                          )),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+
+                // 营养徽章
+                Row(children: [
+                  _NutriBadge(label: '蛋白质', value: '${(totals['protein'] ?? 0).toStringAsFixed(1)}g',
+                      color: AppColors.primary, bgColor: AppColors.primarySoft, borderColor: AppColors.primaryLight),
+                  const SizedBox(width: 10),
+                  _NutriBadge(label: '碳水', value: '${(totals['carbs'] ?? 0).toStringAsFixed(1)}g',
+                      color: const Color(0xFFD4A017), bgColor: AppColors.yellowSoft, borderColor: Color(0xFFFFE599)),
+                  const SizedBox(width: 10),
+                  _NutriBadge(label: '脂肪', value: '${(totals['fat'] ?? 0).toStringAsFixed(1)}g',
+                      color: AppColors.lavender, bgColor: AppColors.lavenderSoft, borderColor: Color(0xFFD8C8F0)),
+                  const SizedBox(width: 10),
+                  _NutriBadge(label: '纤维', value: '${(totals['fiber'] ?? 0).toStringAsFixed(1)}g',
+                      color: AppColors.green, bgColor: AppColors.greenSoft, borderColor: AppColors.greenLight),
+                ]),
               ],
             ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _showAddDialog,
-        child: const Icon(Icons.add),
-      ),
     );
   }
 
   BarChartGroupData _bar(int x, double y, Color color) => BarChartGroupData(
         x: x,
-        barRods: [BarChartRodData(toY: y, color: color, width: 24)],
+        barRods: [BarChartRodData(
+          toY: y,
+          color: color,
+          width: 28,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+          backDrawRodData: BackgroundBarChartRodData(
+            show: true,
+            toY: (y * 1.3).clamp(10, double.infinity),
+            color: color.withOpacity(0.1),
+          ),
+        )],
       );
 
   void _showAddDialog() {
     final recipeCtrl = TextEditingController();
     final calCtrl = TextEditingController();
     final mealTypes = ['breakfast', 'lunch', 'dinner', 'snack'];
-    final mealLabels = ['早餐', '午餐', '晚餐', '零食'];
+    final mealLabels = ['早餐 🌅', '午餐 ☀️', '晚餐 🌙', '零食 🍪'];
     String mealType = 'lunch';
     showDialog(
       context: context,
-      builder: (_) => StatefulBuilder(builder: (ctx, setS) => AlertDialog(
-        title: const Text('记录饮食'),
-        content: Column(mainAxisSize: MainAxisSize.min, children: [
-          TextField(controller: recipeCtrl, decoration: const InputDecoration(labelText: '菜名')),
-          TextField(controller: calCtrl, decoration: const InputDecoration(labelText: '热量 (kcal)'), keyboardType: TextInputType.number),
-          DropdownButton<String>(
-            value: mealType,
-            items: List.generate(4, (i) => DropdownMenuItem(value: mealTypes[i], child: Text(mealLabels[i]))),
-            onChanged: (v) => setS(() => mealType = v!),
+      builder: (_) => StatefulBuilder(builder: (ctx, setS) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppColors.bgCard,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: AppColors.border, width: 2),
+            boxShadow: [BoxShadow(color: AppColors.shadowOuter, blurRadius: 16, offset: const Offset(3, 5))],
           ),
-        ]),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
-          TextButton(
-            onPressed: () async {
-              await ApiService.post('/nutrition/', {
-                'date': _date,
-                'meal_type': mealType,
-                'recipe_name': recipeCtrl.text,
-                'calories': double.tryParse(calCtrl.text) ?? 0,
-                'protein': 0, 'carbs': 0, 'fat': 0, 'fiber': 0,
-              });
-              Navigator.pop(context);
-              _load();
-            },
-            child: const Text('保存'),
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('记录饮食 🍽️',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.textDark)),
+              const SizedBox(height: 20),
+              TextField(controller: recipeCtrl,
+                  decoration: const InputDecoration(labelText: '菜名', prefixIcon: Icon(Icons.restaurant_rounded))),
+              const SizedBox(height: 12),
+              TextField(controller: calCtrl,
+                  decoration: const InputDecoration(labelText: '热量 (kcal)', prefixIcon: Icon(Icons.local_fire_department_rounded)),
+                  keyboardType: TextInputType.number),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.bg,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppColors.border, width: 2),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: mealType,
+                    isExpanded: true,
+                    items: List.generate(4, (i) => DropdownMenuItem(
+                      value: mealTypes[i],
+                      child: Text(mealLabels[i]),
+                    )),
+                    onChanged: (v) => setS(() => mealType = v!),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Row(children: [
+                Expanded(child: GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    decoration: BoxDecoration(
+                      color: AppColors.bg,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: AppColors.border, width: 2),
+                    ),
+                    child: const Center(child: Text('取消',
+                        style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.textMid))),
+                  ),
+                )),
+                const SizedBox(width: 12),
+                Expanded(child: GestureDetector(
+                  onTap: () async {
+                    await ApiService.post('/nutrition/', {
+                      'date': _date,
+                      'meal_type': mealType,
+                      'recipe_name': recipeCtrl.text,
+                      'calories': double.tryParse(calCtrl.text) ?? 0,
+                      'protein': 0, 'carbs': 0, 'fat': 0, 'fiber': 0,
+                    });
+                    Navigator.pop(context);
+                    _load();
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: [BoxShadow(color: AppColors.primary.withOpacity(0.3), blurRadius: 8, offset: const Offset(1, 3))],
+                    ),
+                    child: const Center(child: Text('保存',
+                        style: TextStyle(fontWeight: FontWeight.w700, color: Colors.white))),
+                  ),
+                )),
+              ]),
+            ],
           ),
-        ],
+        ),
       )),
+    );
+  }
+}
+
+class _ClayCard extends StatelessWidget {
+  final Widget child;
+  final Color color;
+  final Color borderColor;
+
+  const _ClayCard({
+    required this.child,
+    this.color = AppColors.bgCard,
+    this.borderColor = AppColors.border,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: borderColor, width: 2),
+        boxShadow: [
+          BoxShadow(color: AppColors.shadowOuter, blurRadius: 10, offset: const Offset(3, 4)),
+          BoxShadow(color: Colors.white.withOpacity(0.8), blurRadius: 4, offset: const Offset(-1, -1)),
+        ],
+      ),
+      child: child,
+    );
+  }
+}
+
+class _NutriBadge extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color color;
+  final Color bgColor;
+  final Color borderColor;
+
+  const _NutriBadge({
+    required this.label,
+    required this.value,
+    required this.color,
+    required this.bgColor,
+    required this.borderColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: borderColor, width: 1.5),
+          boxShadow: [BoxShadow(color: AppColors.shadowOuter, blurRadius: 6, offset: const Offset(2, 3))],
+        ),
+        child: Column(
+          children: [
+            Text(value, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: color)),
+            const SizedBox(height: 3),
+            Text(label, style: const TextStyle(fontSize: 11, color: AppColors.textLight)),
+          ],
+        ),
+      ),
     );
   }
 }
