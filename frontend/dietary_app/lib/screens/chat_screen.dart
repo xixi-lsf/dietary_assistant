@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../config/api_config.dart';
 import '../models/models.dart';
 import '../services/api_service.dart';
+import '../theme/app_theme.dart';
 import 'recipe_detail_screen.dart';
 
 class RecommendationPayload {
@@ -235,23 +236,60 @@ class _ChatScreenState extends State<ChatScreen> {
     final ctrl = TextEditingController(text: session.name);
     final result = await showDialog<String>(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('重命名会话'),
-        content: TextField(
-          controller: ctrl,
-          autofocus: true,
-          decoration: const InputDecoration(isDense: true),
+      builder: (_) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: AppColors.bgCard,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: AppColors.border, width: 2),
+            boxShadow: [
+              BoxShadow(color: AppColors.shadowOuter, blurRadius: 16, offset: const Offset(4, 6)),
+            ],
+          ),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text('重命名会话',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textDark)),
+            const SizedBox(height: 16),
+            TextField(
+              controller: ctrl,
+              autofocus: true,
+              decoration: const InputDecoration(isDense: true),
+            ),
+            const SizedBox(height: 20),
+            Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+              GestureDetector(
+                onTap: () => Navigator.pop(context),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: AppColors.bg,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.border, width: 1.5),
+                  ),
+                  child: const Text('取消',
+                      style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.textMid)),
+                ),
+              ),
+              const SizedBox(width: 10),
+              GestureDetector(
+                onTap: () => Navigator.pop(context, ctrl.text.trim()),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFE06040), width: 1.5),
+                    boxShadow: [BoxShadow(color: AppColors.primary.withOpacity(0.3), blurRadius: 6, offset: const Offset(1, 3))],
+                  ),
+                  child: const Text('确定',
+                      style: TextStyle(fontWeight: FontWeight.w700, color: Colors.white)),
+                ),
+              ),
+            ]),
+          ]),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('取消'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, ctrl.text.trim()),
-            child: const Text('确定'),
-          ),
-        ],
       ),
     );
     ctrl.dispose();
@@ -359,158 +397,133 @@ class _ChatScreenState extends State<ChatScreen> {
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
+      backgroundColor: Colors.transparent,
       builder: (sheetContext) {
-        final theme = Theme.of(sheetContext);
         return StatefulBuilder(
-          builder: (ctx, setSheetState) => Padding(
-            padding: EdgeInsets.fromLTRB(
-              20,
-              20,
-              20,
-              MediaQuery.of(ctx).viewInsets.bottom + 20,
+          builder: (ctx, setSheetState) => Container(
+            margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+            padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
+            decoration: BoxDecoration(
+              color: AppColors.bgCard,
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(color: AppColors.border, width: 2),
+              boxShadow: [
+                BoxShadow(color: AppColors.shadowOuter, blurRadius: 16, offset: const Offset(0, -4)),
+              ],
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                withFeedback ? '调整推荐条件' : '菜单推荐',
-                                style: theme.textTheme.titleLarge?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                            Text(
-                              mode == 'agent' ? 'Agent 模式' : '普通模式',
-                              style: TextStyle(
-                                color: theme.colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          withFeedback
-                              ? '填写想调整的地方后重新推荐。'
-                              : '按场景、人数和口味生成菜单。',
-                          style: TextStyle(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        Wrap(
-                          spacing: 10,
-                          runSpacing: 10,
-                          children: [
-                            _ChoicePill(
-                              label: '普通模式',
-                              selected: mode == 'hardcoded',
-                              onTap: () => setSheetState(() => mode = 'hardcoded'),
-                            ),
-                            _ChoicePill(
-                              label: 'Agent 模式',
-                              selected: mode == 'agent',
-                              onTap: () => setSheetState(() => mode = 'agent'),
-                            ),
-                            _ChoicePill(
-                              label: '日常',
-                              selected: occasion == '日常',
-                              onTap: () => setSheetState(() => occasion = '日常'),
-                            ),
-                            _ChoicePill(
-                              label: '外食',
-                              selected: occasion == '外食',
-                              onTap: () => setSheetState(() => occasion = '外食'),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 14),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                '用餐人数',
-                                style: theme.textTheme.titleSmall?.copyWith(
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ),
-                            _CountButton(
-                              icon: Icons.remove,
-                              onTap: people > 1
-                                  ? () => setSheetState(() => people--)
-                                  : null,
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 12),
-                              child: Text(
-                                '$people',
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w900,
-                                ),
-                              ),
-                            ),
-                            _CountButton(
-                              icon: Icons.add,
-                              onTap: () => setSheetState(() => people++),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 14),
-                        TextField(
-                          controller: prefCtrl,
-                          decoration: const InputDecoration(
-                            labelText: '偏好或限制',
-                            hintText: '比如想吃牛肉、少油、控制热量',
-                          ),
-                          maxLines: 2,
-                        ),
-                        if (withFeedback) ...[
-                          const SizedBox(height: 12),
-                          TextField(
-                            controller: feedbackCtrl,
-                            decoration: const InputDecoration(
-                              labelText: '反馈',
-                              hintText: '比如不要重复、想更清淡、主食换一下',
-                            ),
-                            maxLines: 3,
-                          ),
-                        ],
-                        const SizedBox(height: 16),
-                        SizedBox(
-                          width: double.infinity,
-                          child: FilledButton.icon(
-                            icon: Icon(
-                              withFeedback ? Icons.send_outlined : Icons.auto_awesome,
-                            ),
-                            label: Text(withFeedback ? '提交反馈并重新推荐' : '开始推荐'),
-                            onPressed: () async {
-                              Navigator.pop(ctx);
-                              await _requestRecommendation(
-                                occasion: occasion,
-                                peopleCount: people,
-                                preferences: prefCtrl.text.trim(),
-                                requestedMode: mode,
-                                feedback: feedbackCtrl.text.trim(),
-                              );
-                            },
-                          ),
-                        ),
-                      ],
+                // handle
+                Center(
+                  child: Container(
+                    width: 40, height: 4,
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: AppColors.border,
+                      borderRadius: BorderRadius.circular(4),
                     ),
+                  ),
+                ),
+                Row(children: [
+                  Expanded(child: Text(
+                    withFeedback ? '调整推荐条件' : '菜单推荐',
+                    style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: AppColors.textDark),
+                  )),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: mode == 'agent' ? AppColors.lavenderSoft : AppColors.primarySoft,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: mode == 'agent' ? const Color(0xFFD8C8F0) : AppColors.primaryLight,
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Text(
+                      mode == 'agent' ? 'Agent 模式' : '普通模式',
+                      style: TextStyle(
+                        fontSize: 12, fontWeight: FontWeight.w700,
+                        color: mode == 'agent' ? AppColors.lavender : AppColors.primary,
+                      ),
+                    ),
+                  ),
+                ]),
+                const SizedBox(height: 6),
+                Text(
+                  withFeedback ? '填写想调整的地方后重新推荐。' : '按场景、人数和口味生成菜单。',
+                  style: const TextStyle(fontSize: 13, color: AppColors.textLight),
+                ),
+                const SizedBox(height: 16),
+                Wrap(spacing: 8, runSpacing: 8, children: [
+                  _ChoicePill(label: '普通模式', selected: mode == 'hardcoded',
+                      onTap: () => setSheetState(() => mode = 'hardcoded')),
+                  _ChoicePill(label: 'Agent 模式', selected: mode == 'agent',
+                      onTap: () => setSheetState(() => mode = 'agent')),
+                  _ChoicePill(label: '日常', selected: occasion == '日常',
+                      onTap: () => setSheetState(() => occasion = '日常')),
+                  _ChoicePill(label: '外食', selected: occasion == '外食',
+                      onTap: () => setSheetState(() => occasion = '外食')),
+                ]),
+                const SizedBox(height: 14),
+                Row(children: [
+                  const Expanded(child: Text('用餐人数',
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.textDark))),
+                  _CountButton(icon: Icons.remove_rounded,
+                      onTap: people > 1 ? () => setSheetState(() => people--) : null),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    child: Text('$people',
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: AppColors.textDark)),
+                  ),
+                  _CountButton(icon: Icons.add_rounded, onTap: () => setSheetState(() => people++)),
+                ]),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: prefCtrl,
+                  decoration: const InputDecoration(
+                    labelText: '偏好或限制',
+                    hintText: '比如想吃牛肉、少油、控制热量',
+                  ),
+                  maxLines: 2,
+                ),
+                if (withFeedback) ...[
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: feedbackCtrl,
+                    decoration: const InputDecoration(
+                      labelText: '反馈',
+                      hintText: '比如不要重复、想更清淡、主食换一下',
+                    ),
+                    maxLines: 3,
+                  ),
+                ],
+                const SizedBox(height: 16),
+                GestureDetector(
+                  onTap: () async {
+                    Navigator.pop(ctx);
+                    await _requestRecommendation(
+                      occasion: occasion,
+                      peopleCount: people,
+                      preferences: prefCtrl.text.trim(),
+                      requestedMode: mode,
+                      feedback: feedbackCtrl.text.trim(),
+                    );
+                  },
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFFE06040), width: 2),
+                      boxShadow: [BoxShadow(color: AppColors.primary.withOpacity(0.35), blurRadius: 8, offset: const Offset(2, 3))],
+                    ),
+                    child: Center(child: Text(
+                      withFeedback ? '提交反馈并重新推荐' : '开始推荐 ✨',
+                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Colors.white),
+                    )),
                   ),
                 ),
               ],
@@ -711,55 +724,85 @@ class _ChatScreenState extends State<ChatScreen> {
     await showDialog(
       context: context,
       builder: (_) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          title: const Text('记录这道菜'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                recipe.name,
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
+        builder: (ctx, setDialogState) => Dialog(
+          backgroundColor: Colors.transparent,
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: AppColors.bgCard,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: AppColors.border, width: 2),
+              boxShadow: [
+                BoxShadow(color: AppColors.shadowOuter, blurRadius: 16, offset: const Offset(4, 6)),
+              ],
+            ),
+            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text('记录这道菜',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textDark)),
+              const SizedBox(height: 12),
+              Text(recipe.name,
+                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppColors.textDark)),
               const SizedBox(height: 4),
               Text(
                 '${_nutritionValue(recipe.nutrition, 'calories').toStringAsFixed(0)} kcal',
+                style: const TextStyle(fontSize: 13, color: AppColors.textMid),
               ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                value: mealType,
-                decoration: const InputDecoration(
-                  labelText: '餐次',
-                  isDense: true,
+              const SizedBox(height: 14),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.bg,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppColors.border, width: 2),
                 ),
-                items: List.generate(
-                  mealTypes.length,
-                  (i) => DropdownMenuItem(
-                    value: mealTypes[i],
-                    child: Text(mealLabels[i]),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: mealType,
+                    isExpanded: true,
+                    items: List.generate(mealTypes.length, (i) =>
+                        DropdownMenuItem(value: mealTypes[i], child: Text(mealLabels[i]))),
+                    onChanged: (value) {
+                      if (value != null) setDialogState(() => mealType = value);
+                    },
                   ),
                 ),
-                onChanged: (value) {
-                  if (value != null) {
-                    setDialogState(() => mealType = value);
-                  }
-                },
               ),
-            ],
+              const SizedBox(height: 20),
+              Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+                GestureDetector(
+                  onTap: () => Navigator.pop(ctx),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: AppColors.bg,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.border, width: 1.5),
+                    ),
+                    child: const Text('取消',
+                        style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.textMid)),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                GestureDetector(
+                  onTap: () async {
+                    Navigator.pop(ctx);
+                    await _logRecipeToMeal(recipe, mealType, today);
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFE06040), width: 1.5),
+                      boxShadow: [BoxShadow(color: AppColors.primary.withOpacity(0.3), blurRadius: 6, offset: const Offset(1, 3))],
+                    ),
+                    child: const Text('确认记录',
+                        style: TextStyle(fontWeight: FontWeight.w700, color: Colors.white)),
+                  ),
+                ),
+              ]),
+            ]),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('取消'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                Navigator.pop(ctx);
-                await _logRecipeToMeal(recipe, mealType, today);
-              },
-              child: const Text('确认记录'),
-            ),
-          ],
         ),
       ),
     );
@@ -855,26 +898,44 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final intro = _current.messages.length <= 1;
     return Scaffold(
+      backgroundColor: AppColors.bg,
       appBar: AppBar(
-        title: Text(_showHistory ? '历史会话' : '饮食管家'),
-        centerTitle: true,
+        title: Text(_showHistory ? '历史会话' : '饮食管家 🍃'),
         actions: [
-          IconButton(
-            tooltip: _chatAgentMode ? '切换到普通模式' : '切换到 Agent 模式',
-            onPressed: () => setState(() => _chatAgentMode = !_chatAgentMode),
-            icon: Icon(
-              _chatAgentMode
-                  ? Icons.psychology_alt_outlined
-                  : Icons.chat_bubble_outline,
+          GestureDetector(
+            onTap: () => setState(() => _chatAgentMode = !_chatAgentMode),
+            child: Container(
+              margin: const EdgeInsets.only(right: 6),
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: _chatAgentMode ? AppColors.lavenderSoft : AppColors.primarySoft,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: _chatAgentMode ? const Color(0xFFD8C8F0) : AppColors.primaryLight,
+                  width: 1.5,
+                ),
+              ),
+              child: Icon(
+                _chatAgentMode ? Icons.psychology_rounded : Icons.chat_bubble_outline_rounded,
+                color: _chatAgentMode ? AppColors.lavender : AppColors.primary,
+                size: 18,
+              ),
             ),
           ),
-          IconButton(
-            tooltip: '新会话',
-            onPressed: _newSession,
-            icon: const Icon(Icons.add_comment_outlined),
+          GestureDetector(
+            onTap: _newSession,
+            child: Container(
+              margin: const EdgeInsets.only(right: 12),
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.primarySoft,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.primaryLight, width: 1.5),
+              ),
+              child: const Icon(Icons.add_comment_rounded, color: AppColors.primary, size: 18),
+            ),
           ),
         ],
       ),
@@ -882,68 +943,83 @@ class _ChatScreenState extends State<ChatScreen> {
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () => setState(() => _showHistory = !_showHistory),
-                          icon: Icon(
-                            _showHistory ? Icons.chat_outlined : Icons.history,
-                          ),
-                          label: Text(_showHistory ? '回到聊天' : '历史会话'),
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
+              child: Column(children: [
+                Row(children: [
+                  Expanded(child: GestureDetector(
+                    onTap: () => setState(() => _showHistory = !_showHistory),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      decoration: BoxDecoration(
+                        color: _showHistory ? AppColors.primarySoft : AppColors.bgCard,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: _showHistory ? AppColors.primaryLight : AppColors.border,
+                          width: 1.5,
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: FilledButton.tonalIcon(
-                          onPressed: _sending ? null : () => _openRecommendSheet(),
-                          icon: const Icon(Icons.restaurant_menu),
-                          label: const Text('菜单推荐'),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          _chatAgentMode
-                              ? Icons.auto_awesome
-                              : Icons.forum_outlined,
-                          size: 18,
-                          color: theme.colorScheme.primary,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            _showHistory
-                                ? '当前会话：${_current.name}'
-                                : (_chatAgentMode
-                                    ? '当前为 Agent 对话模式'
-                                    : '当前为普通对话模式'),
+                      child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                        Icon(_showHistory ? Icons.chat_rounded : Icons.history_rounded,
+                            size: 16, color: _showHistory ? AppColors.primary : AppColors.textMid),
+                        const SizedBox(width: 6),
+                        Text(_showHistory ? '回到聊天' : '历史会话',
                             style: TextStyle(
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ),
-                      ],
+                              fontWeight: FontWeight.w700, fontSize: 13,
+                              color: _showHistory ? AppColors.primary : AppColors.textMid,
+                            )),
+                      ]),
+                    ),
+                  )),
+                  const SizedBox(width: 10),
+                  Expanded(child: GestureDetector(
+                    onTap: _sending ? null : () => _openRecommendSheet(),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: const Color(0xFFE06040), width: 1.5),
+                        boxShadow: [BoxShadow(color: AppColors.primary.withOpacity(0.3), blurRadius: 6, offset: const Offset(1, 3))],
+                      ),
+                      child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                        Icon(Icons.restaurant_menu_rounded, size: 16, color: Colors.white),
+                        SizedBox(width: 6),
+                        Text('菜单推荐', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Colors.white)),
+                      ]),
+                    ),
+                  )),
+                ]),
+                const SizedBox(height: 8),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: _chatAgentMode ? AppColors.lavenderSoft : AppColors.bgCard,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: _chatAgentMode ? const Color(0xFFD8C8F0) : AppColors.border,
+                      width: 1.5,
                     ),
                   ),
-                ],
-              ),
+                  child: Row(children: [
+                    Icon(
+                      _chatAgentMode ? Icons.auto_awesome_rounded : Icons.forum_rounded,
+                      size: 16,
+                      color: _chatAgentMode ? AppColors.lavender : AppColors.primary,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text(
+                      _showHistory
+                          ? '当前会话：${_current.name}'
+                          : (_chatAgentMode ? '当前为 Agent 对话模式' : '当前为普通对话模式'),
+                      style: const TextStyle(fontSize: 12, color: AppColors.textMid),
+                    )),
+                  ]),
+                ),
+              ]),
             ),
             Expanded(
-              child: _showHistory ? _buildHistoryPanel() : _buildChat(intro, theme),
+              child: _showHistory ? _buildHistoryPanel() : _buildChat(intro),
             ),
             _ComposerBar(
               controller: _inputCtrl,
@@ -965,10 +1041,17 @@ class _ChatScreenState extends State<ChatScreen> {
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       children: [
         if (sorted.isEmpty)
-          const Card(
-            child: Padding(
-              padding: EdgeInsets.all(16),
-              child: Text('还没有历史会话'),
+          Container(
+            margin: const EdgeInsets.only(top: 8),
+            padding: const EdgeInsets.all(32),
+            decoration: BoxDecoration(
+              color: AppColors.yellowSoft,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: const Color(0xFFFFE599), width: 2),
+            ),
+            child: const Center(
+              child: Text('还没有历史会话 🌱',
+                  style: TextStyle(color: AppColors.textMid, fontSize: 14)),
             ),
           )
         else
@@ -987,31 +1070,27 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Widget _buildChat(bool intro, ThemeData theme) {
+  Widget _buildChat(bool intro) {
     return Column(
       children: [
         if (intro)
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-            child: Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    Text(
-                      '可以这样和我说',
-                      style: TextStyle(fontWeight: FontWeight.w800),
-                    ),
-                    SizedBox(height: 8),
-                    Text('• 帮我推荐一份适合晚餐的两人菜单'),
-                    SizedBox(height: 4),
-                    Text('• 今天吃得有点多，晚餐怎么安排轻一点？'),
-                    SizedBox(height: 4),
-                    Text('• 冰箱里有鸡蛋和番茄，能做什么？'),
-                  ],
-                ),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.greenSoft,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: AppColors.greenLight, width: 2),
               ),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Text('可以这样和我说 🌿',
+                    style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.textDark)),
+                const SizedBox(height: 8),
+                _HintRow('帮我推荐一份适合晚餐的两人菜单'),
+                _HintRow('今天吃得有点多，晚餐怎么安排轻一点？'),
+                _HintRow('冰箱里有鸡蛋和番茄，能做什么？'),
+              ]),
             ),
           ),
         Expanded(
@@ -1041,6 +1120,22 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 }
 
+class _HintRow extends StatelessWidget {
+  final String text;
+  const _HintRow(this.text);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(children: [
+        const Text('• ', style: TextStyle(color: AppColors.green, fontWeight: FontWeight.w700)),
+        Expanded(child: Text(text, style: const TextStyle(fontSize: 13, color: AppColors.textMid))),
+      ]),
+    );
+  }
+}
+
 class _Bubble extends StatefulWidget {
   final ChatMessage msg;
   final ValueChanged<Recipe> onOpenRecipe;
@@ -1065,7 +1160,6 @@ class _BubbleState extends State<_Bubble> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final isUser = widget.msg.isUser;
     final toolCalls = widget.msg.toolCalls;
     final recommendation = widget.msg.recommendation;
@@ -1076,39 +1170,25 @@ class _BubbleState extends State<_Bubble> {
         width: MediaQuery.of(context).size.width * 0.84,
         margin: const EdgeInsets.only(bottom: 12),
         child: Column(
-          crossAxisAlignment:
-              isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+          crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
           children: [
             if (!isUser)
               Padding(
                 padding: const EdgeInsets.only(left: 6, bottom: 6),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 28,
-                      height: 28,
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.primaryContainer,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(
-                        Icons.spa_outlined,
-                        size: 16,
-                        color: theme.colorScheme.primary,
-                      ),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Container(
+                    width: 28, height: 28,
+                    decoration: BoxDecoration(
+                      color: AppColors.primarySoft,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: AppColors.primaryLight, width: 1.5),
                     ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '饮食管家',
-                      style: TextStyle(
-                        color: theme.colorScheme.onSurfaceVariant,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
+                    child: const Icon(Icons.spa_outlined, size: 15, color: AppColors.primary),
+                  ),
+                  const SizedBox(width: 8),
+                  const Text('饮食管家',
+                      style: TextStyle(color: AppColors.textMid, fontWeight: FontWeight.w700, fontSize: 12)),
+                ]),
               ),
             if (!isUser && toolCalls.isNotEmpty)
               GestureDetector(
@@ -1117,88 +1197,61 @@ class _BubbleState extends State<_Bubble> {
                   margin: const EdgeInsets.only(bottom: 8),
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.84),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: theme.colorScheme.outlineVariant),
+                    color: AppColors.lavenderSoft,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFFD8C8F0), width: 1.5),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.auto_awesome_outlined,
-                            size: 15,
-                            color: theme.colorScheme.primary,
-                          ),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              '这一轮调用了 ${toolCalls.length} 个工具',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                color: theme.colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                          ),
-                          Icon(
-                            _showTools ? Icons.expand_less : Icons.expand_more,
-                            size: 18,
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ],
-                      ),
-                      if (_showTools) ...[
-                        const SizedBox(height: 8),
-                        ...toolCalls.map((tc) => _ToolCallTile(tc: tc)),
-                      ],
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Row(children: [
+                      const Icon(Icons.auto_awesome_outlined, size: 15, color: AppColors.lavender),
+                      const SizedBox(width: 6),
+                      Expanded(child: Text(
+                        '这一轮调用了 ${toolCalls.length} 个工具',
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textMid),
+                      )),
+                      Icon(_showTools ? Icons.expand_less : Icons.expand_more,
+                          size: 18, color: AppColors.textLight),
+                    ]),
+                    if (_showTools) ...[
+                      const SizedBox(height: 8),
+                      ...toolCalls.map((tc) => _ToolCallTile(tc: tc)),
                     ],
-                  ),
+                  ]),
                 ),
               ),
             Container(
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
               decoration: BoxDecoration(
-                color: isUser
-                    ? theme.colorScheme.primaryContainer.withOpacity(0.92)
-                    : Colors.white.withOpacity(0.9),
+                color: isUser ? AppColors.primarySoft : AppColors.bgCard,
                 borderRadius: BorderRadius.only(
-                  topLeft: const Radius.circular(26),
-                  topRight: const Radius.circular(26),
-                  bottomLeft: Radius.circular(isUser ? 26 : 10),
-                  bottomRight: Radius.circular(isUser ? 10 : 26),
+                  topLeft: const Radius.circular(22),
+                  topRight: const Radius.circular(22),
+                  bottomLeft: Radius.circular(isUser ? 22 : 6),
+                  bottomRight: Radius.circular(isUser ? 6 : 22),
                 ),
                 border: Border.all(
-                  color: isUser
-                      ? theme.colorScheme.primary.withOpacity(0.18)
-                      : theme.colorScheme.outlineVariant,
+                  color: isUser ? AppColors.primaryLight : AppColors.border,
+                  width: 2,
                 ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    widget.msg.text,
-                    style: TextStyle(
-                      color: theme.colorScheme.onSurface,
-                      height: 1.55,
-                      fontSize: 14,
-                    ),
-                  ),
-                  if (recommendation != null) ...[
-                    const SizedBox(height: 12),
-                    _RecommendationContent(
-                      recommendation: recommendation,
-                      onOpenRecipe: widget.onOpenRecipe,
-                      onLogRecipe: widget.onLogRecipe,
-                      onRetry: () => widget.onRetryRecommendation(recommendation),
-                      onFeedback: () =>
-                          widget.onFeedbackRecommendation(recommendation),
-                    ),
-                  ],
+                boxShadow: [
+                  BoxShadow(color: AppColors.shadowOuter, blurRadius: 8, offset: const Offset(2, 3)),
+                  BoxShadow(color: Colors.white.withOpacity(0.7), blurRadius: 3, offset: const Offset(-1, -1)),
                 ],
               ),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(widget.msg.text,
+                    style: const TextStyle(color: AppColors.textDark, height: 1.55, fontSize: 14)),
+                if (recommendation != null) ...[
+                  const SizedBox(height: 12),
+                  _RecommendationContent(
+                    recommendation: recommendation,
+                    onOpenRecipe: widget.onOpenRecipe,
+                    onLogRecipe: widget.onLogRecipe,
+                    onRetry: () => widget.onRetryRecommendation(recommendation),
+                    onFeedback: () => widget.onFeedbackRecommendation(recommendation),
+                  ),
+                ],
+              ]),
             ),
           ],
         ),
@@ -1227,7 +1280,6 @@ class _RecommendationContent extends StatelessWidget {
     final recipes = recommendation.legacyRecipes.isNotEmpty
         ? recommendation.legacyRecipes
         : [...recommendation.dishes, ...recommendation.staples];
-    final theme = Theme.of(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1236,15 +1288,14 @@ class _RecommendationContent extends StatelessWidget {
           Container(
             width: double.infinity,
             margin: const EdgeInsets.only(bottom: 10),
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: theme.colorScheme.secondaryContainer.withOpacity(0.55),
-              borderRadius: BorderRadius.circular(22),
+              color: AppColors.lavenderSoft,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFFD8C8F0), width: 1.5),
             ),
-            child: Text(
-              recommendation.agentNotes,
-              style: const TextStyle(fontSize: 12, height: 1.5),
-            ),
+            child: Text(recommendation.agentNotes,
+                style: const TextStyle(fontSize: 12, height: 1.5, color: AppColors.textMid)),
           ),
         if (recommendation.dishes.isNotEmpty)
           _RecipeSection(
@@ -1274,15 +1325,37 @@ class _RecommendationContent extends StatelessWidget {
           spacing: 8,
           runSpacing: 8,
           children: [
-            FilledButton.tonalIcon(
-              onPressed: onRetry,
-              icon: const Icon(Icons.refresh, size: 16),
-              label: const Text('重新推荐'),
+            GestureDetector(
+              onTap: onRetry,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppColors.primarySoft,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.primaryLight, width: 1.5),
+                ),
+                child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(Icons.refresh_rounded, size: 14, color: AppColors.primary),
+                  SizedBox(width: 6),
+                  Text('重新推荐', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.primary)),
+                ]),
+              ),
             ),
-            OutlinedButton.icon(
-              onPressed: onFeedback,
-              icon: const Icon(Icons.rate_review_outlined, size: 16),
-              label: const Text('告诉管家怎么改'),
+            GestureDetector(
+              onTap: onFeedback,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppColors.bgCard,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.border, width: 1.5),
+                ),
+                child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(Icons.rate_review_outlined, size: 14, color: AppColors.textMid),
+                  SizedBox(width: 6),
+                  Text('告诉管家怎么改', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textMid)),
+                ]),
+              ),
             ),
           ],
         ),
@@ -1312,114 +1385,77 @@ class _RecipeSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
           padding: const EdgeInsets.only(bottom: 8),
-          child: Text(
-            title,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w800,
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
+          child: Text(title,
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.textMid)),
         ),
-        ...recipes.map(
-          (recipe) => Container(
+        ...recipes.map((recipe) => GestureDetector(
+          onTap: () => onOpenRecipe(recipe),
+          child: Container(
             margin: const EdgeInsets.only(bottom: 10),
             decoration: BoxDecoration(
-              color: theme.colorScheme.surface,
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: theme.colorScheme.outlineVariant),
+              color: AppColors.bgCard,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: AppColors.border, width: 2),
+              boxShadow: [
+                BoxShadow(color: AppColors.shadowOuter, blurRadius: 6, offset: const Offset(2, 3)),
+              ],
             ),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(24),
-              onTap: () => onOpenRecipe(recipe),
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _RecipePreviewImage(recipe: recipe),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      recipe.name,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w800,
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Wrap(
-                                      spacing: 6,
-                                      runSpacing: 6,
-                                      children: [
-                                        _InfoBadge(
-                                          text:
-                                              '${_nutritionValue(recipe.nutrition, 'calories').toStringAsFixed(0)} kcal',
-                                          icon: Icons.local_fire_department_outlined,
-                                        ),
-                                        _InfoBadge(
-                                          text: '${recipe.timeMinutes} 分钟',
-                                          icon: Icons.schedule_outlined,
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              IconButton(
-                                tooltip: '加入餐次',
-                                visualDensity: VisualDensity.compact,
-                                onPressed: () => onLogRecipe(recipe),
-                                icon: const Icon(Icons.add_circle_outline),
-                              ),
-                            ],
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                _RecipePreviewImage(recipe: recipe),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text(recipe.name,
+                            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: AppColors.textDark)),
+                        const SizedBox(height: 6),
+                        Wrap(spacing: 6, runSpacing: 6, children: [
+                          _InfoBadge(
+                            text: '${_nutritionValue(recipe.nutrition, 'calories').toStringAsFixed(0)} kcal',
+                            icon: Icons.local_fire_department_outlined,
                           ),
-                          if (recipe.ingredients.isNotEmpty) ...[
-                            const SizedBox(height: 8),
-                            Text(
-                              recipe.ingredients.take(4).join('、'),
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: theme.colorScheme.onSurfaceVariant,
-                              ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
-                          const SizedBox(height: 8),
-                          Text(
-                            '点击查看图文步骤',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: theme.colorScheme.primary,
-                              fontWeight: FontWeight.w700,
-                            ),
+                          _InfoBadge(
+                            text: '${recipe.timeMinutes} 分钟',
+                            icon: Icons.schedule_outlined,
                           ),
-                        ],
+                        ]),
+                      ])),
+                      GestureDetector(
+                        onTap: () => onLogRecipe(recipe),
+                        child: Container(
+                          width: 32, height: 32,
+                          decoration: BoxDecoration(
+                            color: AppColors.primarySoft,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: AppColors.primaryLight, width: 1.5),
+                          ),
+                          child: const Icon(Icons.add_rounded, size: 18, color: AppColors.primary),
+                        ),
                       ),
-                    ),
-                  ],
+                    ]),
+                    if (recipe.ingredients.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Text(recipe.ingredients.take(4).join('、'),
+                          style: const TextStyle(fontSize: 12, color: AppColors.textLight),
+                          maxLines: 2, overflow: TextOverflow.ellipsis),
+                    ],
+                    const SizedBox(height: 6),
+                    const Text('点击查看图文步骤',
+                        style: TextStyle(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.w700)),
+                  ]),
                 ),
-              ),
+              ]),
             ),
           ),
-        ),
+        )),
       ],
     );
   }
@@ -1466,13 +1502,13 @@ class _RecipePreviewImageState extends State<_RecipePreviewImage> {
 
   @override
   Widget build(BuildContext context) {
-    final borderRadius = BorderRadius.circular(20);
+    final borderRadius = BorderRadius.circular(16);
     return ClipRRect(
       borderRadius: borderRadius,
       child: Container(
         width: 96,
         height: 96,
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        color: AppColors.primarySoft,
         child: _proxyUrl != null
             ? Image.network(
                 _proxyUrl!,
@@ -1482,9 +1518,8 @@ class _RecipePreviewImageState extends State<_RecipePreviewImage> {
             : _loading
                 ? const Center(
                     child: SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
+                      width: 18, height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
                     ),
                   )
                 : _buildPlaceholder(context),
@@ -1496,19 +1531,9 @@ class _RecipePreviewImageState extends State<_RecipePreviewImage> {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Icon(
-          Icons.restaurant,
-          size: 24,
-          color: Theme.of(context).colorScheme.primary.withOpacity(0.7),
-        ),
+        const Icon(Icons.restaurant, size: 24, color: AppColors.primary),
         const SizedBox(height: 6),
-        Text(
-          '成品图',
-          style: TextStyle(
-            fontSize: 11,
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
-        ),
+        const Text('成品图', style: TextStyle(fontSize: 11, color: AppColors.textLight)),
       ],
     );
   }
@@ -1542,7 +1567,6 @@ class _ToolCallTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final name = tc['tool'] as String? ?? '';
     final result = tc['result'] is Map<String, dynamic>
         ? tc['result'] as Map<String, dynamic>
@@ -1579,18 +1603,19 @@ class _ToolCallTile extends StatelessWidget {
       margin: const EdgeInsets.only(top: 6),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.74),
-        borderRadius: BorderRadius.circular(16),
+        color: AppColors.bgCard,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border, width: 1.5),
       ),
       child: Row(
         children: [
-          Icon(icon, size: 14, color: theme.colorScheme.primary),
+          Icon(icon, size: 14, color: AppColors.lavender),
           const SizedBox(width: 6),
           Text(
             label,
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 12,
-              color: theme.colorScheme.onSurface,
+              color: AppColors.textDark,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -1599,10 +1624,7 @@ class _ToolCallTile extends StatelessWidget {
             Expanded(
               child: Text(
                 '→ $summary',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
+                style: const TextStyle(fontSize: 12, color: AppColors.textLight),
                 overflow: TextOverflow.ellipsis,
               ),
             ),
@@ -1632,31 +1654,75 @@ class _SessionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: ListTile(
-        onTap: onTap,
-        leading: Icon(
-          isActive ? Icons.chat : Icons.chat_bubble_outline,
-          color: theme.colorScheme.primary,
-        ),
-        title: Text(
-          session.name,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-        subtitle: Text('${session.messages.length - 1}条消息 · $dateText'),
-        trailing: PopupMenuButton<String>(
-          onSelected: (value) {
-            if (value == 'rename') onRename();
-            if (value == 'delete') onDelete();
-          },
-          itemBuilder: (_) => const [
-            PopupMenuItem(value: 'rename', child: Text('重命名')),
-            PopupMenuItem(value: 'delete', child: Text('删除')),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: isActive ? AppColors.primarySoft : AppColors.bgCard,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: isActive ? AppColors.primaryLight : AppColors.border,
+            width: 2,
+          ),
+          boxShadow: [
+            BoxShadow(color: AppColors.shadowOuter, blurRadius: 8, offset: const Offset(2, 3)),
+            BoxShadow(color: Colors.white.withOpacity(0.7), blurRadius: 3, offset: const Offset(-1, -1)),
           ],
         ),
+        child: Row(children: [
+          Container(
+            width: 38, height: 38,
+            decoration: BoxDecoration(
+              color: isActive ? AppColors.primary : AppColors.bg,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isActive ? const Color(0xFFE06040) : AppColors.border,
+                width: 1.5,
+              ),
+            ),
+            child: Icon(
+              isActive ? Icons.chat_rounded : Icons.chat_bubble_outline_rounded,
+              size: 18,
+              color: isActive ? Colors.white : AppColors.textLight,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(session.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14,
+                  color: isActive ? AppColors.primary : AppColors.textDark,
+                )),
+            const SizedBox(height: 2),
+            Text('${session.messages.length - 1}条消息 · $dateText',
+                style: const TextStyle(fontSize: 12, color: AppColors.textLight)),
+          ])),
+          PopupMenuButton<String>(
+            onSelected: (value) {
+              if (value == 'rename') onRename();
+              if (value == 'delete') onDelete();
+            },
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            child: Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: AppColors.bg,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.border, width: 1.5),
+              ),
+              child: const Icon(Icons.more_horiz_rounded, size: 16, color: AppColors.textLight),
+            ),
+            itemBuilder: (_) => const [
+              PopupMenuItem(value: 'rename', child: Text('重命名')),
+              PopupMenuItem(value: 'delete', child: Text('删除')),
+            ],
+          ),
+        ]),
       ),
     );
   }
@@ -1679,96 +1745,87 @@ class _ComposerBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Container(
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      margin: const EdgeInsets.fromLTRB(12, 4, 12, 12),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.9),
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: theme.colorScheme.outlineVariant),
+        color: AppColors.bgCard,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.border, width: 2),
         boxShadow: [
-          BoxShadow(
-            color: theme.colorScheme.shadow.withOpacity(0.05),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          ),
+          BoxShadow(color: AppColors.shadowOuter, blurRadius: 10, offset: const Offset(2, 4)),
+          BoxShadow(color: Colors.white.withOpacity(0.8), blurRadius: 4, offset: const Offset(-1, -1)),
         ],
       ),
-      child: Column(
-        children: [
-          if (sending)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: Row(
-                children: [
-                  const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    sendingLabel,
-                    style: TextStyle(
-                      color: theme.colorScheme.onSurfaceVariant,
-                      fontSize: 13,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          Row(
-            children: [
-              InkWell(
-                borderRadius: BorderRadius.circular(18),
-                onTap: onMenuTap,
-                child: Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.secondaryContainer,
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-                  child: Icon(
-                    Icons.restaurant_menu,
-                    color: theme.colorScheme.onSecondaryContainer,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: TextField(
-                  controller: controller,
-                  decoration: const InputDecoration(
-                    hintText: '问我任何饮食问题...',
-                    border: InputBorder.none,
-                    enabledBorder: InputBorder.none,
-                    focusedBorder: InputBorder.none,
-                    filled: false,
-                    contentPadding:
-                        EdgeInsets.symmetric(horizontal: 4, vertical: 10),
-                  ),
-                  maxLines: null,
-                  textInputAction: TextInputAction.send,
-                  onSubmitted: (_) => onSend?.call(),
-                ),
+      child: Column(children: [
+        if (sending)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Row(children: [
+              const SizedBox(
+                width: 14, height: 14,
+                child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
               ),
               const SizedBox(width: 8),
-              FilledButton(
-                onPressed: onSend,
-                style: FilledButton.styleFrom(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-                ),
-                child: const Icon(Icons.send_rounded, size: 18),
-              ),
-            ],
+              Text(sendingLabel,
+                  style: const TextStyle(color: AppColors.textMid, fontSize: 12)),
+            ]),
           ),
-        ],
-      ),
+        Row(children: [
+          GestureDetector(
+            onTap: onMenuTap,
+            child: Container(
+              width: 42, height: 42,
+              decoration: BoxDecoration(
+                color: onMenuTap != null ? AppColors.primarySoft : AppColors.bg,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: onMenuTap != null ? AppColors.primaryLight : AppColors.border,
+                  width: 1.5,
+                ),
+              ),
+              child: Icon(Icons.restaurant_menu_rounded,
+                  color: onMenuTap != null ? AppColors.primary : AppColors.textLight, size: 20),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: TextField(
+              controller: controller,
+              decoration: const InputDecoration(
+                hintText: '问我任何饮食问题...',
+                border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                filled: false,
+                contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical: 10),
+              ),
+              maxLines: null,
+              textInputAction: TextInputAction.send,
+              onSubmitted: (_) => onSend?.call(),
+            ),
+          ),
+          const SizedBox(width: 8),
+          GestureDetector(
+            onTap: onSend,
+            child: Container(
+              width: 42, height: 42,
+              decoration: BoxDecoration(
+                color: onSend != null ? AppColors.primary : AppColors.border,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: onSend != null ? const Color(0xFFE06040) : AppColors.border,
+                  width: 1.5,
+                ),
+                boxShadow: onSend != null ? [
+                  BoxShadow(color: AppColors.primary.withOpacity(0.3), blurRadius: 6, offset: const Offset(1, 3)),
+                ] : [],
+              ),
+              child: const Icon(Icons.send_rounded, size: 18, color: Colors.white),
+            ),
+          ),
+        ]),
+      ]),
     );
   }
 }
@@ -1781,21 +1838,18 @@ class _InfoBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest,
+        color: AppColors.bg,
         borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: AppColors.border, width: 1.5),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: theme.colorScheme.onSurfaceVariant),
-          const SizedBox(width: 4),
-          Text(text, style: const TextStyle(fontSize: 12)),
-        ],
-      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(icon, size: 12, color: AppColors.textLight),
+        const SizedBox(width: 4),
+        Text(text, style: const TextStyle(fontSize: 11, color: AppColors.textMid, fontWeight: FontWeight.w600)),
+      ]),
     );
   }
 }
@@ -1813,31 +1867,25 @@ class _ChoicePill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return InkWell(
-      borderRadius: BorderRadius.circular(999),
+    return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: selected
-              ? theme.colorScheme.primaryContainer
-              : theme.colorScheme.surface,
-          borderRadius: BorderRadius.circular(999),
+          color: selected ? AppColors.primarySoft : AppColors.bgCard,
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: selected
-                ? theme.colorScheme.primary.withOpacity(0.22)
-                : theme.colorScheme.outlineVariant,
+            color: selected ? AppColors.primaryLight : AppColors.border,
+            width: selected ? 2 : 1.5,
           ),
         ),
         child: Text(
           label,
           style: TextStyle(
             fontWeight: FontWeight.w700,
-            color: selected
-                ? theme.colorScheme.primary
-                : theme.colorScheme.onSurfaceVariant,
+            fontSize: 13,
+            color: selected ? AppColors.primary : AppColors.textMid,
           ),
         ),
       ),
@@ -1853,19 +1901,20 @@ class _CountButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return InkWell(
-      borderRadius: BorderRadius.circular(16),
+    final enabled = onTap != null;
+    return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 36,
-        height: 36,
+        width: 36, height: 36,
         decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: theme.colorScheme.outlineVariant),
+          color: enabled ? AppColors.primarySoft : AppColors.bg,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: enabled ? AppColors.primaryLight : AppColors.border,
+            width: 1.5,
+          ),
         ),
-        child: Icon(icon, size: 18, color: theme.colorScheme.primary),
+        child: Icon(icon, size: 18, color: enabled ? AppColors.primary : AppColors.textLight),
       ),
     );
   }
