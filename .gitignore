@@ -1,0 +1,42 @@
+# Claude Code
+.claude/
+
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.env
+
+# SQLite database
+*.db
+*.sqlite3
+
+# Logs
+*.log
+*.txt
+
+# Flutter
+frontend/dietary_app/build/
+frontend/dietary_app/.dart_tool/
+frontend/dietary_app/.flutter-plugins
+frontend/dietary_app/.flutter-plugins-dependencies
+frontend/dietary_app/pubspec.lock
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Misc
+uvicorn
