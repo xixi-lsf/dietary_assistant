@@ -914,7 +914,7 @@ class _ChatScreenState extends State<ChatScreen> {
         color: SketchColors.bg,
         child: Stack(
           children: [
-            const Positioned.fill(child: CustomPaint(painter: PaperDotsPainter())),
+            Positioned.fill(child: CustomPaint(painter: PaperDotsPainter())),
             SafeArea(
               child: Column(
                 children: [
@@ -1972,6 +1972,41 @@ class _ChoicePill extends StatelessWidget {
             fontSize: 13,
             color: SketchColors.textMain,
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CountButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback? onTap;
+
+  const _CountButton({required this.icon, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onTap != null;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 36,
+        height: 36,
+        decoration: ShapeDecoration(
+          color: enabled ? const Color(0xFFFFF0D9) : const Color(0xFFF4EFE4),
+          shape: _WobblyOutlineShapeBorder(radius: 12),
+          shadows: const [
+            BoxShadow(
+              color: Color(0x1A8D6E63),
+              offset: Offset(3, 3),
+              blurRadius: 0,
+            ),
+          ],
+        ),
+        child: Icon(
+          icon,
+          size: 18,
+          color: enabled ? SketchColors.lineBrown : const Color(0xFFB7A79D),
         ),
       ),
     );
