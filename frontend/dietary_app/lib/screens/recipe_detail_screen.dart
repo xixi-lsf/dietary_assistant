@@ -332,9 +332,9 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
                             color: AppColors.primarySoft,
-                            borderRadius: BorderRadius.circular(18),
-                            border: Border.all(color: AppColors.primaryLight, width: 2),
-                            boxShadow: [BoxShadow(color: AppColors.shadowOuter, blurRadius: 8, offset: const Offset(2, 3))],
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: AppColors.primaryLight, width: 3),
+                            boxShadow: ClayShadow.raised(),
                           ),
                           child: Row(children: [
                             _InfoChip(icon: Icons.timer_outlined, label: '${recipe.timeMinutes} 分钟', color: AppColors.primary),
@@ -397,38 +397,35 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
                         const SizedBox(height: 20),
                         // 底部操作按钮
                         Row(children: [
-                          Expanded(child: GestureDetector(
+                          Expanded(child: ClayButton(
                             onTap: _showLogDialog,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 13),
-                              decoration: BoxDecoration(
-                                color: AppColors.primarySoft,
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(color: AppColors.primaryLight, width: 2),
-                              ),
-                              child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                                Icon(Icons.add_circle_outline_rounded, color: AppColors.primary, size: 18),
-                                SizedBox(width: 6),
-                                Text('记录这道菜', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.primary)),
-                              ]),
-                            ),
+                            color: AppColors.primarySoft,
+                            borderColor: AppColors.primaryLight,
+                            shadows: ClayShadow.raised(depth: 0.8),
+                            padding: const EdgeInsets.symmetric(vertical: 13),
+                            radius: 16,
+                            child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                              Icon(Icons.add_circle_outline_rounded, color: AppColors.primary, size: 18),
+                              SizedBox(width: 6),
+                              Text('记录这道菜', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.primary)),
+                            ]),
                           )),
                           const SizedBox(width: 12),
-                          Expanded(child: GestureDetector(
+                          Expanded(child: ClayButton(
                             onTap: _showFeedbackDialog,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 13),
-                              decoration: BoxDecoration(
-                                color: AppColors.yellowSoft,
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(color: const Color(0xFFFFE599), width: 2),
-                              ),
-                              child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                                Icon(Icons.star_outline_rounded, color: Color(0xFFD4A017), size: 18),
-                                SizedBox(width: 6),
-                                Text('评价', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFFD4A017))),
-                              ]),
+                            color: AppColors.yellowSoft,
+                            borderColor: const Color(0xFFFFE599),
+                            shadows: ClayShadow.raised(
+                              darkColor: const Color(0x44D4A017),
+                              lightColor: const Color(0xBBFFFFFF),
                             ),
+                            padding: const EdgeInsets.symmetric(vertical: 13),
+                            radius: 16,
+                            child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                              Icon(Icons.star_outline_rounded, color: Color(0xFFD4A017), size: 18),
+                              SizedBox(width: 6),
+                              Text('评价', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFFD4A017))),
+                            ]),
                           )),
                         ]),
                       ],
@@ -507,9 +504,9 @@ class _StepCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.bgCard,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border, width: 2),
-        boxShadow: [BoxShadow(color: AppColors.shadowOuter, blurRadius: 6, offset: const Offset(2, 3))],
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.border, width: 3),
+        boxShadow: ClayShadow.raised(),
       ),
       padding: const EdgeInsets.all(14),
       child: Column(

@@ -31,6 +31,8 @@ class _BanquetScreenState extends State<BanquetScreen> {
     try {
       final apiKey = await ApiConfig.getApiKey();
       final aiBaseUrl = await ApiConfig.getAiBaseUrl();
+      final imageApiKey = await ApiConfig.getImageApiKey();
+      final imageBaseUrl = await ApiConfig.getImageBaseUrl();
       final data = await ApiService.post('/recipes/banquet', {
         'people_count': _people,
         'occasion': _customOccasion ? _customOccasionCtrl.text : _occasion,
@@ -38,6 +40,8 @@ class _BanquetScreenState extends State<BanquetScreen> {
         'dietary_restrictions': _restrictCtrl.text,
         if (apiKey != null && apiKey.isNotEmpty) 'api_key': apiKey,
         if (aiBaseUrl != null && aiBaseUrl.isNotEmpty) 'ai_base_url': aiBaseUrl,
+        if (imageApiKey != null && imageApiKey.isNotEmpty) 'image_api_key': imageApiKey,
+        if (imageBaseUrl != null && imageBaseUrl.isNotEmpty) 'image_base_url': imageBaseUrl,
       });
       setState(() {
         _recipes = (data['recipes'] as List)
@@ -68,11 +72,8 @@ class _BanquetScreenState extends State<BanquetScreen> {
           decoration: BoxDecoration(
             color: AppColors.bgCard,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppColors.border, width: 2),
-            boxShadow: [
-              BoxShadow(color: AppColors.shadowOuter, blurRadius: 10, offset: const Offset(3, 4)),
-              BoxShadow(color: Colors.white.withOpacity(0.8), blurRadius: 4, offset: const Offset(-1, -1)),
-            ],
+            border: Border.all(color: AppColors.border, width: 3),
+            boxShadow: ClayShadow.raised(),
           ),
           child: Column(children: [
             // 人数选择
@@ -154,16 +155,13 @@ class _BanquetScreenState extends State<BanquetScreen> {
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
                     color: _loading ? AppColors.border : const Color(0xFFE06040),
-                    width: 2,
+                    width: 3,
                   ),
-                  boxShadow: _loading ? [] : [
-                    BoxShadow(color: AppColors.primary.withOpacity(0.35), blurRadius: 8, offset: const Offset(2, 3)),
-                  ],
+                  boxShadow: _loading ? ClayShadow.pressed() : ClayShadow.primaryBtn(),
                 ),
                 child: Center(
                   child: _loading
-                      ? const SizedBox(
-                          height: 20, width: 20,
+                      ? const SizedBox(height: 20, width: 20,
                           child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
                       : const Text('生成菜单 ✨',
                           style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Colors.white)),
@@ -207,62 +205,61 @@ class _BanquetScreenState extends State<BanquetScreen> {
                     child: Container(
                       decoration: BoxDecoration(
                         color: AppColors.bgCard,
-                        borderRadius: BorderRadius.circular(18),
-                        border: Border.all(color: AppColors.border, width: 2),
-                        boxShadow: [
-                          BoxShadow(color: AppColors.shadowOuter, blurRadius: 8, offset: const Offset(2, 3)),
-                        ],
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: AppColors.border, width: 3),
+                        boxShadow: ClayShadow.raised(),
                       ),
-                      padding: const EdgeInsets.all(14),
+                      padding: const EdgeInsets.all(12),
                       child: Row(children: [
-                        Container(
-                          width: 48, height: 48,
-                          decoration: BoxDecoration(
-                            color: AppColors.primarySoft,
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: AppColors.primaryLight, width: 1.5),
-                          ),
-                          child: Center(
-                            child: Text(
-                              r.name.isNotEmpty ? r.name[0] : '🍽',
-                              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.primary),
-                            ),
-                          ),
+                        // 左边图片或首字
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(14),
+                          child: r.previewImageUrl != null
+                              ? _BanquetImage(url: r.previewImageUrl!)
+                              : Container(
+                                  width: 64, height: 64,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primarySoft,
+                                    borderRadius: BorderRadius.circular(14),
+                                    border: Border.all(color: AppColors.primaryLight, width: 2),
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      r.name.isNotEmpty ? r.name[0] : '🍽',
+                                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: AppColors.primary),
+                                    ),
+                                  ),
+                                ),
                         ),
                         const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(r.name,
-                                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textDark)),
-                              const SizedBox(height: 4),
-                              Row(children: [
-                                const Icon(Icons.timer_outlined, size: 13, color: AppColors.textLight),
-                                const SizedBox(width: 3),
-                                Text('${r.timeMinutes} 分钟',
-                                    style: const TextStyle(fontSize: 12, color: AppColors.textLight)),
-                                const SizedBox(width: 10),
-                                const Icon(Icons.local_fire_department_outlined, size: 13, color: AppColors.textLight),
-                                const SizedBox(width: 3),
-                                Text('${(r.nutrition['calories'] ?? 0).toStringAsFixed(0)} kcal',
-                                    style: const TextStyle(fontSize: 12, color: AppColors.textLight)),
-                              ]),
-                              if (r.category != null) ...[
-                                const SizedBox(height: 4),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.greenSoft,
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Text(r.category!,
-                                      style: const TextStyle(fontSize: 11, color: AppColors.green, fontWeight: FontWeight.w600)),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
+                        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Text(r.name,
+                              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textDark)),
+                          const SizedBox(height: 4),
+                          Row(children: [
+                            const Icon(Icons.timer_outlined, size: 13, color: AppColors.textLight),
+                            const SizedBox(width: 3),
+                            Text('${r.timeMinutes} 分钟',
+                                style: const TextStyle(fontSize: 12, color: AppColors.textLight)),
+                            const SizedBox(width: 10),
+                            const Icon(Icons.local_fire_department_outlined, size: 13, color: AppColors.textLight),
+                            const SizedBox(width: 3),
+                            Text('${(r.nutrition['calories'] ?? 0).toStringAsFixed(0)} kcal',
+                                style: const TextStyle(fontSize: 12, color: AppColors.textLight)),
+                          ]),
+                          if (r.category != null) ...[
+                            const SizedBox(height: 4),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: AppColors.greenSoft,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(r.category!,
+                                  style: const TextStyle(fontSize: 11, color: AppColors.green, fontWeight: FontWeight.w600)),
+                            ),
+                          ],
+                        ])),
                         const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppColors.textLight),
                       ]),
                     ),
@@ -300,6 +297,54 @@ class _CounterButton extends StatelessWidget {
         ),
         child: Icon(icon, size: 18,
             color: enabled ? AppColors.primary : AppColors.textLight),
+      ),
+    );
+  }
+}
+
+class _BanquetImage extends StatefulWidget {
+  final String url;
+  const _BanquetImage({required this.url});
+
+  @override
+  State<_BanquetImage> createState() => _BanquetImageState();
+}
+
+class _BanquetImageState extends State<_BanquetImage> {
+  String? _proxyUrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _buildProxyUrl();
+  }
+
+  Future<void> _buildProxyUrl() async {
+    final base = await ApiConfig.getBaseUrl();
+    final encoded = Uri.encodeComponent(widget.url);
+    if (mounted) setState(() => _proxyUrl = '$base/ai/image-proxy?url=$encoded');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_proxyUrl == null) {
+      return Container(
+        width: 64,
+        height: 64,
+        color: AppColors.primarySoft,
+        child: const Center(child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary)),
+      );
+    }
+    return Image.network(
+      _proxyUrl!,
+      width: 64,
+      height: 64,
+      fit: BoxFit.cover,
+      errorBuilder: (_, __, ___) => Container(
+        width: 64,
+        height: 64,
+        color: AppColors.primarySoft,
+        child: const Center(child: Icon(Icons.broken_image_rounded, color: AppColors.textLight, size: 32)),
       ),
     );
   }

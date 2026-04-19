@@ -297,7 +297,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   subtitle: '可选：用于推荐成品图或步骤图',
                   accentColor: AppColors.blue,
                   children: [
-                    const Text('推荐：通义万象 wanx2.1-t2i-turbo（约0.04元/张）',
+                    const Text('',
                         style: TextStyle(fontSize: 12, color: AppColors.textLight)),
                     const SizedBox(height: 10),
                     TextField(controller: _imageApiKeyCtrl,
@@ -311,15 +311,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 _SectionCard(
                   title: '外部工具 API',
                   emoji: '🌐',
-                  subtitle: 'Agent 模式可用；不填就跳过',
+                  subtitle: '',
                   accentColor: AppColors.yellow,
                   children: [
                     TextField(controller: _weatherApiKeyCtrl,
-                        decoration: const InputDecoration(labelText: 'OpenWeatherMap API Key', hintText: '天气查询，免费注册'),
+                        decoration: const InputDecoration(labelText: 'OpenWeatherMap API Key', hintText: '天气查询'),
                         obscureText: true),
                     const SizedBox(height: 10),
                     TextField(controller: _serperApiKeyCtrl,
-                        decoration: const InputDecoration(labelText: 'Serper API Key', hintText: '网页搜索，免费2500次/月'),
+                        decoration: const InputDecoration(labelText: 'Serper API Key', hintText: '网页搜索'),
                         obscureText: true),
                   ],
                 ),
@@ -332,8 +332,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     decoration: BoxDecoration(
                       color: AppColors.primary,
                       borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: const Color(0xFFE06040), width: 2),
-                      boxShadow: [BoxShadow(color: AppColors.primary.withOpacity(0.35), blurRadius: 10, offset: const Offset(2, 4))],
+                      border: Border.all(color: const Color(0xFFE06040), width: 3),
+                      boxShadow: ClayShadow.primaryBtn(),
                     ),
                     child: const Center(
                       child: Text('保存设置',
@@ -485,11 +485,8 @@ class _SectionCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.bgCard,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.border, width: 2),
-        boxShadow: [
-          BoxShadow(color: AppColors.shadowOuter, blurRadius: 10, offset: const Offset(3, 4)),
-          BoxShadow(color: Colors.white.withOpacity(0.8), blurRadius: 4, offset: const Offset(-1, -1)),
-        ],
+        border: Border.all(color: AppColors.border, width: 3),
+        boxShadow: ClayShadow.raised(),
       ),
       padding: const EdgeInsets.all(18),
       child: Column(

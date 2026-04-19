@@ -65,99 +65,92 @@ class _NutritionScreenState extends State<NutritionScreen> {
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
               children: [
                 // 日期选择器
-                _ClayCard(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.chevron_left_rounded, color: AppColors.textMid),
-                          onPressed: () => _changeDate(-1),
+                ClayCard(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.chevron_left_rounded, color: AppColors.textMid),
+                        onPressed: () => _changeDate(-1),
+                      ),
+                      Column(children: [
+                        Text(_date,
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textDark)),
+                        Text(
+                          _date == DateTime.now().toIso8601String().substring(0, 10) ? '今天' : '',
+                          style: const TextStyle(fontSize: 11, color: AppColors.primary),
                         ),
-                        Column(
-                          children: [
-                            Text(_date,
-                                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textDark)),
-                            Text(
-                              _date == DateTime.now().toIso8601String().substring(0, 10) ? '今天' : '',
-                              style: const TextStyle(fontSize: 11, color: AppColors.primary),
-                            ),
-                          ],
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.chevron_right_rounded, color: AppColors.textMid),
-                          onPressed: () => _changeDate(1),
-                        ),
-                      ],
-                    ),
+                      ]),
+                      IconButton(
+                        icon: const Icon(Icons.chevron_right_rounded, color: AppColors.textMid),
+                        onPressed: () => _changeDate(1),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 14),
 
                 // 热量大卡
-                _ClayCard(
+                ClayCard(
                   color: AppColors.primarySoft,
                   borderColor: AppColors.primaryLight,
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 52,
-                          height: 52,
-                          decoration: BoxDecoration(
-                            color: AppColors.primary,
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: [BoxShadow(color: AppColors.primary.withOpacity(0.35), blurRadius: 8, offset: const Offset(2, 3))],
-                          ),
-                          child: const Icon(Icons.local_fire_department_rounded, color: Colors.white, size: 28),
+                  padding: const EdgeInsets.all(20),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 52, height: 52,
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: const Color(0xFFE06040), width: 3),
+                          boxShadow: ClayShadow.primaryBtn(),
                         ),
-                        const SizedBox(width: 16),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('总热量', style: TextStyle(fontSize: 13, color: AppColors.textMid)),
-                            Text('${calories.toStringAsFixed(0)} kcal',
-                                style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w800, color: AppColors.textDark)),
-                          ],
-                        ),
-                      ],
-                    ),
+                        child: const Icon(Icons.local_fire_department_rounded, color: Colors.white, size: 28),
+                      ),
+                      const SizedBox(width: 16),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('总热量', style: TextStyle(fontSize: 13, color: AppColors.textMid)),
+                          Text('${calories.toStringAsFixed(0)} kcal',
+                              style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w800, color: AppColors.textDark)),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 14),
 
                 // 营养柱状图
-                _ClayCard(
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('营养分布',
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textDark)),
-                        const SizedBox(height: 16),
-                        SizedBox(
-                          height: 180,
-                          child: BarChart(BarChartData(
-                            gridData: FlGridData(
-                              show: true,
-                              drawVerticalLine: false,
-                              getDrawingHorizontalLine: (_) => FlLine(
-                                color: AppColors.border,
-                                strokeWidth: 1,
-                                dashArray: [4, 4],
-                              ),
+                ClayCard(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('营养分布',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textDark)),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        height: 180,
+                        child: BarChart(BarChartData(
+                          gridData: FlGridData(
+                            show: true,
+                            drawVerticalLine: false,
+                            getDrawingHorizontalLine: (_) => FlLine(
+                              color: AppColors.border,
+                              strokeWidth: 1,
+                              dashArray: [4, 4],
                             ),
-                            borderData: FlBorderData(show: false),
-                            barGroups: [
-                              _bar(0, (totals['protein'] ?? 0).toDouble(), AppColors.primary),
-                              _bar(1, (totals['carbs'] ?? 0).toDouble(), AppColors.yellow),
-                              _bar(2, (totals['fat'] ?? 0).toDouble(), AppColors.lavender),
-                              _bar(3, (totals['fiber'] ?? 0).toDouble(), AppColors.green),
-                            ],
-                            titlesData: FlTitlesData(
+                          ),
+                          borderData: FlBorderData(show: false),
+                          barGroups: [
+                            _bar(0, (totals['protein'] ?? 0).toDouble(), AppColors.primary),
+                            _bar(1, (totals['carbs'] ?? 0).toDouble(), AppColors.yellow),
+                            _bar(2, (totals['fat'] ?? 0).toDouble(), AppColors.lavender),
+                            _bar(3, (totals['fiber'] ?? 0).toDouble(), AppColors.green),
+                          ],
+                          titlesData: FlTitlesData(
                               bottomTitles: AxisTitles(sideTitles: SideTitles(
                                 showTitles: true,
                                 getTitlesWidget: (v, _) {
@@ -183,7 +176,6 @@ class _NutritionScreenState extends State<NutritionScreen> {
                       ],
                     ),
                   ),
-                ),
                 const SizedBox(height: 14),
 
                 // 营养徽章
@@ -319,33 +311,7 @@ class _NutritionScreenState extends State<NutritionScreen> {
   }
 }
 
-class _ClayCard extends StatelessWidget {
-  final Widget child;
-  final Color color;
-  final Color borderColor;
-
-  const _ClayCard({
-    required this.child,
-    this.color = AppColors.bgCard,
-    this.borderColor = AppColors.border,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: borderColor, width: 2),
-        boxShadow: [
-          BoxShadow(color: AppColors.shadowOuter, blurRadius: 10, offset: const Offset(3, 4)),
-          BoxShadow(color: Colors.white.withOpacity(0.8), blurRadius: 4, offset: const Offset(-1, -1)),
-        ],
-      ),
-      child: child,
-    );
-  }
-}
+// ClayCard from app_theme.dart is used directly
 
 class _NutriBadge extends StatelessWidget {
   final String label;
@@ -370,16 +336,17 @@ class _NutriBadge extends StatelessWidget {
         decoration: BoxDecoration(
           color: bgColor,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: borderColor, width: 1.5),
-          boxShadow: [BoxShadow(color: AppColors.shadowOuter, blurRadius: 6, offset: const Offset(2, 3))],
-        ),
-        child: Column(
-          children: [
-            Text(value, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: color)),
-            const SizedBox(height: 3),
-            Text(label, style: const TextStyle(fontSize: 11, color: AppColors.textLight)),
+          border: Border.all(color: borderColor, width: 2.5),
+          boxShadow: [
+            BoxShadow(color: color.withOpacity(0.2), blurRadius: 8, offset: const Offset(2, 3)),
+            const BoxShadow(color: Color(0xBBFFFFFF), blurRadius: 4, offset: Offset(-1, -1)),
           ],
         ),
+        child: Column(children: [
+          Text(value, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: color)),
+          const SizedBox(height: 3),
+          Text(label, style: const TextStyle(fontSize: 11, color: AppColors.textLight, fontWeight: FontWeight.w600)),
+        ]),
       ),
     );
   }

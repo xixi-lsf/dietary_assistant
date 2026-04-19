@@ -187,6 +187,11 @@ def recommend_banquet(req: BanquetRequest):
             dietary_restrictions=req.dietary_restrictions,
             base_url=req.ai_base_url,
         )
+        recipes = ai_service.attach_recipe_preview_images(
+            recipes,
+            image_api_key=req.image_api_key,
+            image_base_url=req.image_base_url,
+        )
         return {"recipes": recipes, "source": "claude"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"AI 调用失败: {str(e)}")

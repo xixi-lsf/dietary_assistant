@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的手绘冰箱 🧊</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Zhi+Mang+Xing&display=swap');
+
+        :root {
+            --bg-paper: #fdfaf1;
+            --line-brown: #8d6e63;
+            --tag-green: #e8f5e9;
+            --tag-yellow: #fffde7;
+            --tag-red: #ffebee;
+            --text-color: #5d4037;
+        }
+
+        /* 沿用完美版的波浪滤镜 */
+        svg[height="0"] { position: absolute; }
+
+        body {
+            background-color: var(--bg-paper);
+            background-image: radial-gradient(#e5e0d0 1px, transparent 1px);
+            background-size: 24px 24px;
+            color: var(--text-color);
+            font-family: 'Hiragino Sans GB', 'Microsoft YaHei', cursive;
+            margin: 0;
+            padding: 20px;
+            padding-bottom: 100px;
+        }
+
+        .header-section {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header-section h1 {
+            font-family: 'Zhi Mang Xing', cursive;
+            font-size: 2.8rem;
+            margin: 0;
+            display: inline-block;
+            position: relative;
+        }
+
+        /* 顶部手绘标签页 (Tabs) */
+        .fridge-tabs {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .tab-item {
+            background: white;
+            border: 2px solid var(--line-brown);
+            padding: 8px 25px;
+            border-radius: 15px 15px 0 0; /* 书签感 */
+            cursor: pointer;
+            font-weight: bold;
+            filter: url(#wave-filter);
+            transition: all 0.2s;
+            position: relative;
+            top: 2px;
+        }
+
+        .tab-item.active {
+            background: var(--tag-green);
+            transform: scale(1.1);
+            z-index: 2;
+            top: 0;
+            border-bottom-color: var(--tag-green);
+        }
+
+        /* 食材卡片容器：改用网格布局，更像 Web 端设计 */
+        .ingredients-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+            padding: 20px;
+            border: 3px dashed var(--line-brown);
+            border-radius: 30px;
+            filter: url(#wave-filter);
+            background: rgba(255,255,255,0.3);
+        }
+
+        /* 单个食材卡片：便利贴风格 */
+        .food-card {
+            background: white;
+            padding: 15px;
+            border: 2px solid var(--line-brown);
+            border-radius: 10px 30px 15px 25px / 25px 15px 30px 10px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 5px 5px 0px rgba(141, 110, 99, 0.1);
+        }
+
+        /* 随机旋转，制造“贴上去”的感觉 */
+        .food-card:nth-child(4n+1) { transform: rotate(-1.5deg); }
+        .food-card:nth-child(4n+2) { transform: rotate(2deg); }
+        .food-card:nth-child(4n+3) { transform: rotate(-1deg); }
+        .food-card:hover {
+            transform: scale(1.05) rotate(0deg);
+            z-index: 5;
+            box-shadow: 8px 8px 0px rgba(141, 110, 99, 0.2);
+        }
+
+        /* 食材首字图标 */
+        .food-avatar {
+            width: 50px;
+            height: 50px;
+            background: var(--tag-yellow);
+            border: 2px solid var(--line-brown);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.5rem;
+            font-family: 'Zhi Mang Xing', cursive;
+            margin-bottom: 10px;
+            box-shadow: 2px 2px 0 var(--line-brown);
+        }
+
+        .food-name {
+            font-weight: bold;
+            font-size: 1.1rem;
+            margin: 5px 0;
+        }
+
+        .food-count {
+            font-size: 0.9rem;
+            opacity: 0.7;
+            background: var(--bg-paper);
+            padding: 2px 10px;
+            border-radius: 10px;
+            border: 1px solid var(--line-brown);
+        }
+
+        /* 可爱的删除按钮 */
+        .delete-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            width: 24px;
+            height: 24px;
+            background: var(--tag-red);
+            border: 1.5px solid var(--line-brown);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            font-size: 0.7rem;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .food-card:hover .delete-btn {
+            opacity: 1;
+        }
+
+        /* 底部导航栏还原 */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0; left: 0; width: 100%;
+            height: 80px;
+            background: #fffef0;
+            border-top: 3px solid var(--line-brown);
+            clip-path: polygon(0% 15%, 5% 0%, 10% 15%, 15% 0%, 20% 15%, 25% 0%, 30% 15%, 35% 0%, 40% 15%, 45% 0%, 50% 15%, 55% 0%, 60% 15%, 65% 0%, 70% 15%, 75% 0%, 80% 15%, 85% 0%, 90% 15%, 95% 0%, 100% 15%, 100% 100%, 0% 100%);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .nav-item {
+            text-align: center;
+            color: var(--line-brown);
+            font-size: 0.75rem;
+            margin-top: 10px;
+        }
+
+        .nav-icon {
+            width: 30px; height: 30px;
+            border: 2px solid var(--line-brown);
+            border-radius: 8px 15px 10px 12px;
+            background: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0 auto 3px;
+            font-size: 1.1rem;
+        }
+
+        .active-nav {
+            transform: scale(1.1) translateY(-5px);
+            color: #d32f2f;
+        }
+    </style>
+</head>
+<body>
+
+    <svg width="0" height="0">
+        <filter id="wave-filter">
+            <feTurbulence type="fractalNoise" baseFrequency="0.015" numOctaves="3" result="noise" />
+            <feDisplacementMap in="SourceGraphic" in2="noise" scale="4" />
+        </filter>
+    </svg>
+
+    <div class="header-section">
+        <h1>我的冰箱 🧊</h1>
+        <div class="fridge-tabs">
+            <div class="tab-item active">🥦 食材</div>
+            <div class="tab-item">🍳 厨具</div>
+            <div class="tab-item">🧂 调料</div>
+        </div>
+    </div>
+
+    <div class="ingredients-grid">
+        <div class="food-card">
+            <div class="delete-btn">✖</div>
+            <div class="food-avatar">鸡</div>
+            <div class="food-name">鸡腿</div>
+            <div class="food-count">3 个</div>
+        </div>
+
+        <div class="food-card">
+            <div class="delete-btn">✖</div>
+            <div class="food-avatar" style="background:var(--tag-green)">金</div>
+            <div class="food-name">金针菇</div>
+            <div class="food-count">2 袋</div>
+        </div>
+
+        <div class="food-card">
+            <div class="delete-btn">✖</div>
+            <div class="food-avatar" style="background:var(--tag-red)">土</div>
+            <div class="food-name">土豆</div>
+            <div class="food-count">4 斤</div>
+        </div>
+
+        <div class="food-card">
+            <div class="delete-btn">✖</div>
+            <div class="food-avatar" style="background:var(--tag-green)">西</div>
+            <div class="food-name">西红柿</div>
+            <div class="food-count">2 斤</div>
+        </div>
+
+        <div class="food-card">
+            <div class="delete-btn">✖</div>
+            <div class="food-avatar">牛</div>
+            <div class="food-name">牛肉</div>
+            <div class="food-count">1 斤</div>
+        </div>
+
+        <div class="food-card">
+            <div class="delete-btn">✖</div>
+            <div class="food-avatar" style="background:var(--tag-yellow)">黄</div>
+            <div class="food-name">黄瓜</div>
+            <div class="food-count">5 根</div>
+        </div>
+
+        <div class="food-card">
+            <div class="delete-btn">✖</div>
+            <div class="food-avatar" style="background:var(--tag-yellow)">玉</div>
+            <div class="food-name">玉米</div>
+            <div class="food-count">4 根</div>
+        </div>
+
+        <div class="food-card">
+            <div class="delete-btn">✖</div>
+            <div class="food-avatar" style="background:var(--tag-green)">西</div>
+            <div class="food-name">西葫芦</div>
+            <div class="food-count">3 个</div>
+        </div>
+    </div>
+
+    <nav class="bottom-nav">
+        <div class="nav-item">
+            <div class="nav-icon">🏠</div>
+            <span>首页</span>
+        </div>
+        <div class="nav-item active-nav">
+            <div class="nav-icon" style="border-color:#d32f2f">🧊</div>
+            <span>冰箱</span>
+        </div>
+        <div class="nav-item">
+            <div class="nav-icon">🥂</div>
+            <span>宴请</span>
+        </div>
+        <div class="nav-item">
+            <div class="nav-icon">📊</div>
+            <span>营养</span>
+        </div>
+        <div class="nav-item">
+            <div class="nav-icon">🤖</div>
+            <span>管家</span>
+        </div>
+        <div class="nav-item">
+            <div class="nav-icon">🧠</div>
+            <span>记忆</span>
+        </div>
+    </nav>
+
+</body>
+</html>

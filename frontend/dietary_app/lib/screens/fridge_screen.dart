@@ -62,10 +62,8 @@ class _FridgeScreenState extends State<FridgeScreen> with SingleTickerProviderSt
           decoration: BoxDecoration(
             color: AppColors.bgCard,
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: AppColors.border, width: 2),
-            boxShadow: [
-              BoxShadow(color: AppColors.shadowOuter, blurRadius: 16, offset: const Offset(3, 5)),
-            ],
+            border: Border.all(color: AppColors.border, width: 3),
+            boxShadow: ClayShadow.raised(),
           ),
           padding: const EdgeInsets.all(24),
           child: Column(
@@ -190,13 +188,14 @@ class _FridgeScreenState extends State<FridgeScreen> with SingleTickerProviderSt
       floatingActionButton: GestureDetector(
         onTap: _showAddDialog,
         child: Container(
-          width: 56,
-          height: 56,
+          width: 56, height: 56,
           decoration: BoxDecoration(
             color: _colors[idx],
             borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: _colors[idx].withOpacity(0.7), width: 3),
             boxShadow: [
-              BoxShadow(color: _colors[idx].withOpacity(0.4), blurRadius: 12, offset: const Offset(2, 4)),
+              BoxShadow(color: _colors[idx].withOpacity(0.45), blurRadius: 12, offset: const Offset(3, 5)),
+              const BoxShadow(color: Color(0xAAFFFFFF), blurRadius: 6, offset: Offset(-2, -2)),
             ],
           ),
           child: const Icon(Icons.add_rounded, color: Colors.white, size: 28),
@@ -257,11 +256,9 @@ class _ItemList extends StatelessWidget {
           child: Container(
             decoration: BoxDecoration(
               color: AppColors.bgCard,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.border, width: 2),
-              boxShadow: [
-                BoxShadow(color: AppColors.shadowOuter, blurRadius: 6, offset: const Offset(2, 3)),
-              ],
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: AppColors.border, width: 3),
+              boxShadow: ClayShadow.raised(),
             ),
             child: ListTile(
               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),

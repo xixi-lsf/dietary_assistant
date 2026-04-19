@@ -83,10 +83,10 @@ class _MemoryStatsScreenState extends State<MemoryStatsScreen> {
         const Text('各口味标签的权重随反馈次数的变化，趋于平稳说明系统已认识你的偏好。',
             style: TextStyle(fontSize: 12, color: AppColors.textLight)),
         const SizedBox(height: 10),
-        _ClayCard(child: Padding(
+        ClayCard(
           padding: const EdgeInsets.all(16),
           child: SizedBox(height: 220, child: _weightChart(history)),
-        )),
+        ),
         const SizedBox(height: 14),
 
         _SectionHeader(emoji: '📉', title: '权重方差（稳定性指标）'),
@@ -94,10 +94,10 @@ class _MemoryStatsScreenState extends State<MemoryStatsScreen> {
         const Text('方差越低说明偏好越稳定，可用于收敛速度分析。',
             style: TextStyle(fontSize: 12, color: AppColors.textLight)),
         const SizedBox(height: 10),
-        _ClayCard(child: Padding(
+        ClayCard(
           padding: const EdgeInsets.all(16),
           child: SizedBox(height: 160, child: _varianceChart(history)),
-        )),
+        ),
         const SizedBox(height: 14),
       ],
 
@@ -107,24 +107,22 @@ class _MemoryStatsScreenState extends State<MemoryStatsScreen> {
         const Text('单次评分（散点）与滑动平均（折线），上升趋势说明记忆系统在改善推荐质量。',
             style: TextStyle(fontSize: 12, color: AppColors.textLight)),
         const SizedBox(height: 10),
-        _ClayCard(child: Padding(
+        ClayCard(
           padding: const EdgeInsets.all(16),
           child: SizedBox(height: 200, child: _scoreChart(scoreTrend)),
-        )),
+        ),
         const SizedBox(height: 14),
       ],
 
       if (history.isEmpty && scoreTrend.isEmpty)
-        _ClayCard(
+        ClayCard(
           color: AppColors.yellowSoft,
           borderColor: const Color(0xFFFFE599),
-          child: const Padding(
-            padding: EdgeInsets.all(32),
-            child: Center(
-              child: Text('还没有反馈数据 🌱\n去菜单页评价几道菜，记忆系统就会开始学习～',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: AppColors.textMid, fontSize: 14, height: 1.6)),
-            ),
+          padding: const EdgeInsets.all(32),
+          child: const Center(
+            child: Text('还没有反馈数据 🌱\n去菜单页评价几道菜，记忆系统就会开始学习～',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: AppColors.textMid, fontSize: 14, height: 1.6)),
           ),
         ),
 
@@ -143,12 +141,11 @@ class _MemoryStatsScreenState extends State<MemoryStatsScreen> {
     final Color borderColor = convIndex >= 0.7 ? AppColors.greenLight : convIndex >= 0.4 ? const Color(0xFFFFE599) : AppColors.border;
     final String label = convIndex >= 0.7 ? '偏好已稳定 ✓' : convIndex >= 0.4 ? '学习中...' : '数据不足';
 
-    return _ClayCard(
+    return ClayCard(
       color: bgColor,
       borderColor: borderColor,
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      padding: const EdgeInsets.all(20),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               const Text('收敛指数', style: TextStyle(fontSize: 12, color: AppColors.textLight)),
@@ -185,7 +182,6 @@ class _MemoryStatsScreenState extends State<MemoryStatsScreen> {
             Text(summary, style: const TextStyle(fontSize: 13, color: AppColors.textDark, height: 1.5)),
           ],
         ]),
-      ),
     );
   }
 
@@ -324,10 +320,9 @@ class _MemoryStatsScreenState extends State<MemoryStatsScreen> {
     final sortedWeights = weights.entries.toList()
       ..sort((a, b) => (b.value as num).compareTo(a.value as num));
 
-    return _ClayCard(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+    return ClayCard(
+      padding: const EdgeInsets.all(16),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           if (sortedWeights.isNotEmpty) ...[
             const Text('口味权重', style: TextStyle(fontSize: 12, color: AppColors.textLight, fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
@@ -389,38 +384,11 @@ class _MemoryStatsScreenState extends State<MemoryStatsScreen> {
             Text(summary, style: const TextStyle(fontSize: 13, color: AppColors.textDark, height: 1.5)),
           ],
         ]),
-      ),
     );
   }
 }
 
-class _ClayCard extends StatelessWidget {
-  final Widget child;
-  final Color color;
-  final Color borderColor;
 
-  const _ClayCard({
-    required this.child,
-    this.color = AppColors.bgCard,
-    this.borderColor = AppColors.border,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: borderColor, width: 2),
-        boxShadow: [
-          BoxShadow(color: AppColors.shadowOuter, blurRadius: 10, offset: const Offset(3, 4)),
-          BoxShadow(color: Colors.white.withOpacity(0.8), blurRadius: 4, offset: const Offset(-1, -1)),
-        ],
-      ),
-      child: child,
-    );
-  }
-}
 
 class _SectionHeader extends StatelessWidget {
   final String emoji;

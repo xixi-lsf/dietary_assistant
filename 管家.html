@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>饮食管家 🍀</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Zhi+Mang+Xing&display=swap');
+
+        :root {
+            --bg-paper: #fdfaf1;
+            --line-brown: #8d6e63;
+            --ai-bubble: #f0f9f0; /* 极浅绿 */
+            --user-bubble: #fff5f6; /* 极浅粉 */
+            --text-main: #5d4037;
+        }
+
+        /* 波浪滤镜 */
+        svg[height="0"] { position: absolute; }
+
+        body {
+            background-color: var(--bg-paper);
+            background-image: radial-gradient(#e5e0d0 1px, transparent 1px);
+            background-size: 24px 24px;
+            color: var(--text-main);
+            font-family: 'Hiragino Sans GB', 'Microsoft YaHei', cursive;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        /* 顶部区域 */
+        .chat-header {
+            padding: 20px;
+            text-align: center;
+            border-bottom: 2px dashed var(--line-brown);
+        }
+
+        .header-title {
+            font-family: 'Zhi Mang Xing', cursive;
+            font-size: 2rem;
+            margin: 0;
+        }
+
+        /* 历史记录按钮 - 木牌风格 */
+        .history-wood {
+            display: inline-block;
+            margin-top: 10px;
+            padding: 5px 20px;
+            background: #d7ccc8;
+            border: 2px solid var(--line-brown);
+            border-radius: 5px;
+            font-size: 0.8rem;
+            box-shadow: 2px 2px 0 var(--line-brown);
+            cursor: pointer;
+        }
+
+        /* 聊天区域 */
+        .chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+
+        /* 对话行 */
+        .chat-row {
+            display: flex;
+            align-items: flex-start;
+            max-width: 850px;
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        .chat-row.user { flex-direction: row-reverse; }
+
+        /* 豆芽管家头像 - 纯CSS绘制 */
+        .avatar-sprout {
+            width: 50px; height: 50px;
+            background: #c8e6c9;
+            border: 2.5px solid var(--line-brown);
+            border-radius: 50% 50% 40% 40%;
+            position: relative;
+            margin: 0 15px;
+            flex-shrink: 0;
+            animation: sway 3s ease-in-out infinite;
+        }
+        /* 豆芽的小叶子 */
+        .avatar-sprout::after {
+            content: "🌱";
+            position: absolute; top: -18px; left: 12px;
+            font-size: 20px;
+        }
+        /* 豆芽的小眼睛 */
+        .avatar-sprout::before {
+            content: "• •";
+            position: absolute; top: 15px; left: 14px;
+            font-weight: bold; letter-spacing: 2px;
+        }
+
+        
+
+        /* 云朵气泡 */
+        .bubble {
+            padding: 18px 25px;
+            border: 2.5px dashed var(--line-brown);
+            filter: url(#wave-filter);
+            position: relative;
+            line-height: 1.6;
+            max-width: 70%;
+            box-shadow: 5px 5px 0 rgba(0,0,0,0.05);
+        }
+
+        .ai-bubble {
+            background-color: var(--ai-bubble);
+            border-radius: 5px 30px 30px 30px;
+            transform: rotate(-1deg);
+        }
+
+        .user-bubble {
+            background-color: var(--user-bubble);
+            border-radius: 30px 5px 30px 30px;
+            transform: rotate(1deg);
+        }
+
+        /* 气泡内的重点加粗 */
+        .bubble b {
+            color: #2e7d32;
+            background: linear-gradient(transparent 70%, #c8e6c9 70%);
+        }
+
+        /* 输入区域 */
+        .input-area {
+            padding: 20px;
+            background: white;
+            border-top: 3px solid var(--line-brown);
+            clip-path: polygon(0% 10%, 100% 0%, 100% 100%, 0% 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .input-box {
+            width: 80%;
+            max-width: 800px;
+            background: #fff;
+            border: 2px solid var(--line-brown);
+            border-radius: 40px 10px 35px 15px / 15px 35px 10px 40px;
+            padding: 12px 25px;
+            font-size: 1rem;
+            outline: none;
+            filter: url(#wave-filter);
+        }
+
+        .send-btn {
+            width: 50px; height: 50px;
+            background: var(--ai-bubble);
+            border: 2px solid var(--line-brown);
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 1.5rem;
+            transition: transform 0.2s;
+        }
+        .send-btn:hover { transform: scale(1.1) rotate(10deg); }
+
+        @keyframes sway {
+            0%, 100% { transform: rotate(-3deg); }
+            50% { transform: rotate(3deg); }
+        }
+    </style>
+</head>
+<body>
+
+    <svg width="0" height="0">
+        <filter id="wave-filter">
+            <feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="3" result="noise" />
+            <feDisplacementMap in="SourceGraphic" in2="noise" scale="3" />
+        </filter>
+    </svg>
+
+    <header class="chat-header">
+        <h1 class="header-title">饮食管家 🍀</h1>
+        <div class="history-wood">📜 历史会话</div>
+    </header>
+
+    <div class="chat-container">
+        <div class="chat-row">
+            <div class="avatar-sprout"></div>
+            <div class="bubble ai-bubble">
+                您好，我是您的私人饮食管家。您可以直接问我问题，也可以点“菜单推荐”让我帮您安排一餐。
+            </div>
+        </div>
+
+        <div class="chat-row user">
+            <div class="avatar-user">🌸</div>
+            <div class="bubble user-bubble">
+                我最近在健身，饮食上要注意什么？
+            </div>
+        </div>
+
+        <div class="chat-row">
+            <div class="avatar-sprout"></div>
+            <div class="bubble ai-bubble">
+                减脂健身，饮食上抓好这几个核心点：<br><br>
+                ✨ <b>蛋白要足够</b>：每公斤体重摄入1.5-2g蛋白质。您冰箱里的<b>鸡腿、牛肉、猪肉</b>都是很好的来源。<br>
+                ✨ <b>控制总热量</b>：建议每天比平时热量减少300-500 kcal。<br>
+                ✨ <b>碳水不要完全戒掉</b>：土豆、玉米都是优质碳水，训练前吃点表现会更好。
+            </div>
+        </div>
+    </div>
+
+    <div class="input-area">
+        <input type="text" class="input-box" placeholder="问我任何饮食问题...">
+        <div class="send-btn">✈️</div>
+    </div>
+
+</body>
+</html>

@@ -320,97 +320,91 @@ class _MenuScreenState extends State<MenuScreen> {
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
               children: [
                 // 设置卡片
-                _ClayCard(
-                  child: Padding(
-                    padding: const EdgeInsets.all(18),
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Row(children: [
-                        Container(
-                          width: 36, height: 36,
-                          decoration: BoxDecoration(
-                            color: AppColors.primarySoft,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: AppColors.primaryLight, width: 1.5),
-                          ),
-                          child: const Icon(Icons.tune_rounded, color: AppColors.primary, size: 20),
-                        ),
-                        const SizedBox(width: 10),
-                        const Text('今天想怎么吃？',
-                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.textDark)),
-                        const Spacer(),
-                        _ClayBadge(
-                          label: _agentMode ? 'Agent' : '普通',
-                          color: _agentMode ? AppColors.lavender : AppColors.textLight,
-                          bgColor: _agentMode ? AppColors.lavenderSoft : AppColors.bg,
-                        ),
-                      ]),
-                      const SizedBox(height: 14),
-                      // 场合选择
-                      Wrap(spacing: 8, runSpacing: 8, children: [
-                        _OccasionPill(label: '日常', selected: _occasion == '日常' && !_agentMode,
-                            onTap: () => setState(() { _occasion = '日常'; _agentMode = false; })),
-                        _OccasionPill(label: '外食', selected: _occasion == '外食' && !_agentMode,
-                            onTap: () => setState(() { _occasion = '外食'; _agentMode = false; })),
-                        _OccasionPill(
-                          label: 'Agent 模式',
-                          selected: _agentMode,
-                          onTap: () => setState(() { _agentMode = !_agentMode; _agentNotes = ''; _lastToolCalls = []; }),
-                          selectedColor: AppColors.lavender,
-                          selectedBg: AppColors.lavenderSoft,
-                        ),
-                      ]),
-                      const SizedBox(height: 12),
-                      // 人数
+                ClayCard(
+                  padding: const EdgeInsets.all(18),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Row(children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        width: 36, height: 36,
                         decoration: BoxDecoration(
-                          color: AppColors.bg,
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: AppColors.border, width: 1.5),
+                          color: AppColors.primarySoft,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.primaryLight, width: 2.5),
+                          boxShadow: [
+                            BoxShadow(color: AppColors.primary.withOpacity(0.2), blurRadius: 6, offset: const Offset(2, 2)),
+                            const BoxShadow(color: Color(0xBBFFFFFF), blurRadius: 3, offset: Offset(-1, -1)),
+                          ],
                         ),
-                        child: Row(children: [
-                          const Icon(Icons.people_rounded, size: 18, color: AppColors.textMid),
-                          const SizedBox(width: 8),
-                          const Text('用餐人数', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.textDark)),
-                          const Spacer(),
-                          _CounterBtn(icon: Icons.remove_rounded,
-                              onTap: _people > 1 ? () => setState(() => _people--) : null),
-                          const SizedBox(width: 12),
-                          Text('$_people 人',
-                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textDark)),
-                          const SizedBox(width: 12),
-                          _CounterBtn(icon: Icons.add_rounded, onTap: () => setState(() => _people++)),
-                        ]),
+                        child: const Icon(Icons.tune_rounded, color: AppColors.primary, size: 20),
                       ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: _prefCtrl,
-                        decoration: const InputDecoration(
-                          labelText: '口味便签',
-                          hintText: '如：想吃牛肉、清淡一点、早餐 300 kcal 左右',
-                        ),
-                        maxLines: 2,
-                      ),
-                      const SizedBox(height: 14),
-                      GestureDetector(
-                        onTap: () => _recommend(),
-                        child: Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: const Color(0xFFE06040), width: 2),
-                            boxShadow: [BoxShadow(color: AppColors.primary.withOpacity(0.35), blurRadius: 8, offset: const Offset(2, 3))],
-                          ),
-                          child: const Center(
-                            child: Text('生成菜单 ✨',
-                                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Colors.white)),
-                          ),
-                        ),
+                      const SizedBox(width: 10),
+                      const Text('今天想怎么吃？',
+                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.textDark)),
+                      const Spacer(),
+                      _ClayBadge(
+                        label: _agentMode ? 'Agent' : '普通',
+                        color: _agentMode ? AppColors.lavender : AppColors.textLight,
+                        bgColor: _agentMode ? AppColors.lavenderSoft : AppColors.bg,
                       ),
                     ]),
-                  ),
+                    const SizedBox(height: 14),
+                    Wrap(spacing: 8, runSpacing: 8, children: [
+                      _OccasionPill(label: '日常', selected: _occasion == '日常' && !_agentMode,
+                          onTap: () => setState(() { _occasion = '日常'; _agentMode = false; })),
+                      _OccasionPill(label: '外食', selected: _occasion == '外食' && !_agentMode,
+                          onTap: () => setState(() { _occasion = '外食'; _agentMode = false; })),
+                      _OccasionPill(
+                        label: 'Agent 模式',
+                        selected: _agentMode,
+                        onTap: () => setState(() { _agentMode = !_agentMode; _agentNotes = ''; _lastToolCalls = []; }),
+                        selectedColor: AppColors.lavender,
+                        selectedBg: AppColors.lavenderSoft,
+                      ),
+                    ]),
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: AppColors.bg,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: AppColors.border, width: 2.5),
+                        boxShadow: ClayShadow.raised(depth: 0.6),
+                      ),
+                      child: Row(children: [
+                        const Icon(Icons.people_rounded, size: 18, color: AppColors.textMid),
+                        const SizedBox(width: 8),
+                        const Text('用餐人数', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.textDark)),
+                        const Spacer(),
+                        _CounterBtn(icon: Icons.remove_rounded,
+                            onTap: _people > 1 ? () => setState(() => _people--) : null),
+                        const SizedBox(width: 12),
+                        Text('$_people 人',
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textDark)),
+                        const SizedBox(width: 12),
+                        _CounterBtn(icon: Icons.add_rounded, onTap: () => setState(() => _people++)),
+                      ]),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _prefCtrl,
+                      decoration: const InputDecoration(
+                        labelText: '口味便签',
+                        hintText: '如：想吃牛肉、清淡一点、早餐 300 kcal 左右',
+                      ),
+                      maxLines: 2,
+                    ),
+                    const SizedBox(height: 14),
+                    ClayButton(
+                      onTap: () => _recommend(),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      radius: 16,
+                      child: const SizedBox(
+                        width: double.infinity,
+                        child: Center(child: Text('生成菜单 ✨',
+                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Colors.white))),
+                      ),
+                    ),
+                  ]),
                 ),
                 const SizedBox(height: 12),
 
@@ -422,16 +416,14 @@ class _MenuScreenState extends State<MenuScreen> {
 
                 // 空状态
                 if (!hasNewFormat && _legacyRecipes.isEmpty)
-                  _ClayCard(
+                  ClayCard(
                     color: AppColors.yellowSoft,
                     borderColor: const Color(0xFFFFE599),
-                    child: const Padding(
-                      padding: EdgeInsets.all(32),
-                      child: Center(
-                        child: Text('还没有生成菜单 🌱\n点上方按钮，让管家帮你排一份今日菜单。',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(color: AppColors.textMid, fontSize: 14, height: 1.6)),
-                      ),
+                    padding: const EdgeInsets.all(32),
+                    child: const Center(
+                      child: Text('还没有生成菜单 🌱\n点上方按钮，让管家帮你排一份今日菜单。',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: AppColors.textMid, fontSize: 14, height: 1.6)),
                     ),
                   )
                 else ...[
@@ -477,88 +469,97 @@ class _MenuScreenState extends State<MenuScreen> {
                   // 组合热量卡
                   if (_selectedDish != null && _selectedStaple != null) ...[
                     const SizedBox(height: 4),
-                    _ClayCard(
+                    ClayCard(
                       color: AppColors.primarySoft,
                       borderColor: AppColors.primaryLight,
-                      child: Padding(
-                        padding: const EdgeInsets.all(18),
-                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Row(children: [
-                            const Icon(Icons.local_fire_department_rounded, color: AppColors.primary, size: 20),
-                            const SizedBox(width: 8),
-                            const Text('今日组合热量',
-                                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.textDark)),
-                          ]),
-                          const SizedBox(height: 10),
-                          Text('${_selectedDish!.name} + ${_selectedStaple!.name}',
-                              style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.textDark)),
-                          const SizedBox(height: 4),
-                          Text('${_combinedCalories.toStringAsFixed(0)} kcal',
-                              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: AppColors.primary)),
-                          const SizedBox(height: 12),
-                          GestureDetector(
-                            onTap: _confirmAndLog,
-                            child: Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              decoration: BoxDecoration(
-                                color: AppColors.primary,
-                                borderRadius: BorderRadius.circular(14),
-                                boxShadow: [BoxShadow(color: AppColors.primary.withOpacity(0.3), blurRadius: 8, offset: const Offset(1, 3))],
-                              ),
-                              child: const Center(child: Text('记录这餐',
-                                  style: TextStyle(fontWeight: FontWeight.w800, color: Colors.white))),
+                      padding: const EdgeInsets.all(18),
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Row(children: [
+                          Container(
+                            width: 32, height: 32,
+                            decoration: BoxDecoration(
+                              color: AppColors.primary,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: const Color(0xFFE06040), width: 2),
+                              boxShadow: ClayShadow.primaryBtn(),
                             ),
+                            child: const Icon(Icons.local_fire_department_rounded, color: Colors.white, size: 18),
                           ),
+                          const SizedBox(width: 10),
+                          const Text('今日组合热量',
+                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.textDark)),
                         ]),
-                      ),
+                        const SizedBox(height: 10),
+                        Text('${_selectedDish!.name} + ${_selectedStaple!.name}',
+                            style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.textDark)),
+                        const SizedBox(height: 4),
+                        Text('${_combinedCalories.toStringAsFixed(0)} kcal',
+                            style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: AppColors.primary)),
+                        const SizedBox(height: 12),
+                        ClayButton(
+                          onTap: _confirmAndLog,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          radius: 14,
+                          child: const SizedBox(
+                            width: double.infinity,
+                            child: Center(child: Text('记录这餐',
+                                style: TextStyle(fontWeight: FontWeight.w800, color: Colors.white))),
+                          ),
+                        ),
+                      ]),
                     ),
                     const SizedBox(height: 12),
                   ],
 
                   // 反馈卡
-                  _ClayCard(
-                    child: Padding(
-                      padding: const EdgeInsets.all(18),
-                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Row(children: [
-                          const Icon(Icons.rate_review_rounded, color: AppColors.textMid, size: 18),
-                          const SizedBox(width: 8),
-                          const Text('不够满意？再改一版',
-                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.textDark)),
-                        ]),
-                        const SizedBox(height: 10),
-                        TextField(
-                          controller: _feedbackCtrl,
-                          decoration: const InputDecoration(
-                            hintText: '比如：不要重复、想吃牛肉、主食换成更清淡的',
+                  ClayCard(
+                    padding: const EdgeInsets.all(18),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Row(children: [
+                        Container(
+                          width: 32, height: 32,
+                          decoration: BoxDecoration(
+                            color: AppColors.bg,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: AppColors.border, width: 2.5),
+                            boxShadow: ClayShadow.raised(depth: 0.6),
                           ),
-                          maxLines: 2,
+                          child: const Icon(Icons.rate_review_rounded, color: AppColors.textMid, size: 16),
                         ),
-                        const SizedBox(height: 10),
-                        GestureDetector(
-                          onTap: () {
-                            final fb = _feedbackCtrl.text;
-                            _feedbackCtrl.clear();
-                            _recommend(feedback: fb);
-                          },
-                          child: Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            decoration: BoxDecoration(
-                              color: AppColors.bg,
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(color: AppColors.border, width: 2),
-                            ),
-                            child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                              Icon(Icons.refresh_rounded, size: 16, color: AppColors.textMid),
-                              SizedBox(width: 6),
-                              Text('重新推荐', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.textMid)),
-                            ]),
-                          ),
-                        ),
+                        const SizedBox(width: 10),
+                        const Text('不够满意？再改一版',
+                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.textDark)),
                       ]),
-                    ),
+                      const SizedBox(height: 10),
+                      TextField(
+                        controller: _feedbackCtrl,
+                        decoration: const InputDecoration(
+                          hintText: '比如：不要重复、想吃牛肉、主食换成更清淡的',
+                        ),
+                        maxLines: 2,
+                      ),
+                      const SizedBox(height: 10),
+                      ClayButton(
+                        onTap: () {
+                          final fb = _feedbackCtrl.text;
+                          _feedbackCtrl.clear();
+                          _recommend(feedback: fb);
+                        },
+                        color: AppColors.bg,
+                        borderColor: AppColors.border,
+                        shadows: ClayShadow.raised(depth: 0.7),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        radius: 14,
+                        child: const SizedBox(
+                          width: double.infinity,
+                          child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                            Icon(Icons.refresh_rounded, size: 16, color: AppColors.textMid),
+                            SizedBox(width: 6),
+                            Text('重新推荐', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.textMid)),
+                          ]),
+                        ),
+                      ),
+                    ]),
                   ),
                 ],
               ],
@@ -569,33 +570,7 @@ class _MenuScreenState extends State<MenuScreen> {
 
 // ── Shared widgets ──────────────────────────────────────────────
 
-class _ClayCard extends StatelessWidget {
-  final Widget child;
-  final Color color;
-  final Color borderColor;
-
-  const _ClayCard({
-    required this.child,
-    this.color = AppColors.bgCard,
-    this.borderColor = AppColors.border,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: borderColor, width: 2),
-        boxShadow: [
-          BoxShadow(color: AppColors.shadowOuter, blurRadius: 10, offset: const Offset(3, 4)),
-          BoxShadow(color: Colors.white.withOpacity(0.8), blurRadius: 4, offset: const Offset(-1, -1)),
-        ],
-      ),
-      child: child,
-    );
-  }
-}
+// _ClayCard removed — use ClayCard from app_theme.dart
 
 class _SectionHeader extends StatelessWidget {
   final String emoji;
@@ -832,12 +807,11 @@ class _AgentInfoCardState extends State<_AgentInfoCard> {
 
   @override
   Widget build(BuildContext context) {
-    return _ClayCard(
+    return ClayCard(
       color: AppColors.lavenderSoft,
       borderColor: const Color(0xFFD8C8F0),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      padding: const EdgeInsets.all(16),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
             const Icon(Icons.psychology_rounded, color: AppColors.lavender, size: 18),
             const SizedBox(width: 8),
@@ -882,7 +856,6 @@ class _AgentInfoCardState extends State<_AgentInfoCard> {
             )),
           ],
         ]),
-      ),
     );
   }
 }
