@@ -1,4 +1,4 @@
-import 'dart:math' show pi;
+import 'dart:math' show pi, sin;
 import 'package:flutter/material.dart';
 
 // ── 调色板 ──────────────────────────────────────────────
@@ -412,6 +412,7 @@ class DashedBorderPainter extends CustomPainter {
   final double dashWidth;
   final double dashSpace;
   final BorderRadius borderRadius;
+  final double wobble;
 
   const DashedBorderPainter({
     this.color = const Color(0xFF8D6E63),
@@ -424,6 +425,7 @@ class DashedBorderPainter extends CustomPainter {
       bottomRight: Radius.elliptical(50, 15),
       bottomLeft: Radius.elliptical(20, 40),
     ),
+    this.wobble = 0,
   });
 
   @override
@@ -431,10 +433,14 @@ class DashedBorderPainter extends CustomPainter {
     final paint = Paint()
       ..color = color
       ..strokeWidth = strokeWidth
-      ..style = PaintingStyle.stroke;
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
 
-    final rrect = borderRadius.toRRect(Offset.zero & size);
-    final path = Path()..addRRect(rrect);
+    final rect = Offset.zero & size;
+    final rrect = borderRadius.toRRect(rect.deflate(strokeWidth / 2));
+    final path = wobble > 0
+        ? _createWobblyPath(rrect, wobble)
+        : (Path()..addRRect(rrect));
 
     final dashedPath = Path();
     for (final metric in path.computeMetrics()) {
@@ -448,9 +454,42 @@ class DashedBorderPainter extends CustomPainter {
     canvas.drawPath(dashedPath, paint);
   }
 
+  Path _createWobblyPath(RRect rrect, double amount) {
+    final source = Path()..addRRect(rrect);
+    final result = Path();
+    for (final metric in source.computeMetrics()) {
+      final length = metric.length;
+      const step = 10.0;
+      bool isFirst = true;
+      for (double distance = 0; distance <= length; distance += step) {
+        final tangent = metric.getTangentForOffset(distance.clamp(0.0, length));
+        if (tangent == null) continue;
+        final offset = tangent.position;
+        final normal = Offset(-tangent.vector.dy, tangent.vector.dx);
+        final normalLength = normal.distance == 0 ? 1.0 : normal.distance;
+        final unitNormal = Offset(normal.dx / normalLength, normal.dy / normalLength);
+        final wave = sin((distance / step) * 0.9) * amount;
+        final point = offset + unitNormal * wave;
+        if (isFirst) {
+          result.moveTo(point.dx, point.dy);
+          isFirst = false;
+        } else {
+          result.lineTo(point.dx, point.dy);
+        }
+      }
+      result.close();
+    }
+    return result;
+  }
+
   @override
   bool shouldRepaint(DashedBorderPainter old) =>
-      color != old.color || borderRadius != old.borderRadius;
+      color != old.color ||
+      strokeWidth != old.strokeWidth ||
+      dashWidth != old.dashWidth ||
+      dashSpace != old.dashSpace ||
+      borderRadius != old.borderRadius ||
+      wobble != old.wobble;
 }
 
 /// 手绘风卡片 — 虚线边框 + 不规则圆角 + 微倾斜 + 偏移阴影
@@ -505,7 +544,10 @@ class _HandDrawnCardState extends State<HandDrawnCard> {
           ..rotateZ(angle),
         transformAlignment: Alignment.center,
         child: CustomPaint(
-          foregroundPainter: DashedBorderPainter(borderRadius: br),
+          foregroundPainter: DashedBorderPainter(
+            borderRadius: br,
+            wobble: 1.4,
+          ),
           child: Container(
             decoration: BoxDecoration(
               color: widget.color,
