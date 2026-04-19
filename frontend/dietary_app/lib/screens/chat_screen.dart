@@ -482,27 +482,24 @@ class _ChatScreenState extends State<ChatScreen> {
                   _CountButton(icon: Icons.add_rounded, onTap: () => setSheetState(() => people++)),
                 ]),
                 const SizedBox(height: 14),
-                TextField(
+                _SketchOutlinedTextField(
                   controller: prefCtrl,
-                  decoration: const InputDecoration(
-                    labelText: '偏好或限制',
-                    hintText: '比如想吃牛肉、少油、控制热量',
-                  ),
+                  label: '用户要求',
+                  hint: '比如想吃牛肉、少油、控制热量',
                   maxLines: 2,
                 ),
                 if (withFeedback) ...[
                   const SizedBox(height: 12),
-                  TextField(
+                  _SketchOutlinedTextField(
                     controller: feedbackCtrl,
-                    decoration: const InputDecoration(
-                      labelText: '反馈',
-                      hintText: '比如不要重复、想更清淡、主食换一下',
-                    ),
+                    label: '反馈',
+                    hint: '比如不要重复、想更清淡、主食换一下',
                     maxLines: 3,
                   ),
                 ],
                 const SizedBox(height: 16),
-                GestureDetector(
+                _SketchPrimaryButton(
+                  label: withFeedback ? '提交反馈并重新推荐' : '开始推荐',
                   onTap: () async {
                     Navigator.pop(ctx);
                     await _requestRecommendation(
@@ -513,20 +510,6 @@ class _ChatScreenState extends State<ChatScreen> {
                       feedback: feedbackCtrl.text.trim(),
                     );
                   },
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: const Color(0xFFE06040), width: 2),
-                      boxShadow: [BoxShadow(color: AppColors.primary.withOpacity(0.35), blurRadius: 8, offset: const Offset(2, 3))],
-                    ),
-                    child: Center(child: Text(
-                      withFeedback ? '提交反馈并重新推荐' : '开始推荐 ✨',
-                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Colors.white),
-                    )),
-                  ),
                 ),
               ],
             ),
@@ -932,7 +915,7 @@ class _ChatScreenState extends State<ChatScreen> {
                           onToggleMode: () => setState(() => _chatAgentMode = !_chatAgentMode),
                           onNewSession: _newSession,
                         ),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 16),
                         _ModeBanner(
                           showHistory: _showHistory,
                           chatAgentMode: _chatAgentMode,
@@ -969,8 +952,8 @@ class _ChatScreenState extends State<ChatScreen> {
         if (sorted.isEmpty)
           HandDrawnCard(
             color: SketchColors.accentSoft,
-            rotation: -0.5,
-            hoverRotation: -0.5,
+            rotation: 0,
+            hoverRotation: 0,
             padding: const EdgeInsets.all(28),
             child: const Center(
               child: Text(
@@ -1003,8 +986,8 @@ class _ChatScreenState extends State<ChatScreen> {
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
             child: HandDrawnCard(
               color: Colors.white,
-              rotation: -0.8,
-              hoverRotation: -0.8,
+              rotation: 0,
+              hoverRotation: 0,
               padding: const EdgeInsets.all(18),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1115,10 +1098,13 @@ class _BubbleState extends State<_Bubble> {
       child: Row(
         mainAxisAlignment:
             isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.end,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (!isUser) ...[
-            const _SproutAvatar(),
+            const Padding(
+              padding: EdgeInsets.only(top: 4),
+              child: _SproutAvatar(),
+            ),
             const SizedBox(width: 10),
           ],
           Flexible(
@@ -1144,8 +1130,8 @@ class _BubbleState extends State<_Bubble> {
                       margin: const EdgeInsets.only(bottom: 8),
                       child: HandDrawnCard(
                         color: const Color(0xFFF3ECFB),
-                        rotation: -0.6,
-                        hoverRotation: -0.6,
+                        rotation: 0,
+                        hoverRotation: 0,
                         padding: const EdgeInsets.symmetric(
                           horizontal: 14,
                           vertical: 12,
@@ -1189,19 +1175,36 @@ class _BubbleState extends State<_Bubble> {
                       ),
                     ),
                   ),
-                Transform.rotate(
-                  angle: isUser ? 0.018 : -0.018,
-                  child: CustomPaint(
-                    painter: _CloudBubblePainter(
-                      color: bubbleTint,
-                      isUser: isUser,
+                ClipPath(
+                  clipper: _MessageBubbleClipper(isUser: isUser),
+                  child: Container(
+                    constraints: BoxConstraints(
+                      maxWidth: MediaQuery.of(context).size.width * 0.72,
                     ),
-                    child: Container(
-                      constraints: BoxConstraints(
-                        maxWidth: MediaQuery.of(context).size.width * 0.72,
+                    decoration: BoxDecoration(
+                      color: bubbleTint,
+                      border: Border.all(
+                        color: SketchColors.lineBrown,
+                        width: 2,
                       ),
-                      padding: const EdgeInsets.fromLTRB(22, 18, 22, 18),
+                      borderRadius: BorderRadius.only(
+                        topLeft: const Radius.circular(24),
+                        topRight: const Radius.circular(24),
+                        bottomLeft: Radius.circular(isUser ? 24 : 10),
+                        bottomRight: Radius.circular(isUser ? 10 : 24),
+                      ),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x338D6E63),
+                          offset: Offset(4, 4),
+                          blurRadius: 0,
+                        ),
+                      ],
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
                       child: Column(
+                        mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
@@ -1211,17 +1214,21 @@ class _BubbleState extends State<_Bubble> {
                               height: 1.6,
                               fontSize: 14,
                             ),
+                            softWrap: true,
                           ),
                           if (recommendation != null) ...[
                             const SizedBox(height: 12),
-                            _RecommendationContent(
-                              recommendation: recommendation,
-                              onOpenRecipe: widget.onOpenRecipe,
-                              onLogRecipe: widget.onLogRecipe,
-                              onRetry: () =>
-                                  widget.onRetryRecommendation(recommendation),
-                              onFeedback: () => widget
-                                  .onFeedbackRecommendation(recommendation),
+                            ConstrainedBox(
+                              constraints: const BoxConstraints(minWidth: 0),
+                              child: _RecommendationContent(
+                                recommendation: recommendation,
+                                onOpenRecipe: widget.onOpenRecipe,
+                                onLogRecipe: widget.onLogRecipe,
+                                onRetry: () =>
+                                    widget.onRetryRecommendation(recommendation),
+                                onFeedback: () => widget
+                                    .onFeedbackRecommendation(recommendation),
+                              ),
                             ),
                           ],
                         ],
@@ -1234,7 +1241,10 @@ class _BubbleState extends State<_Bubble> {
           ),
           if (isUser) ...[
             const SizedBox(width: 10),
-            const _UserBadge(),
+            const Padding(
+              padding: EdgeInsets.only(top: 4),
+              child: _UserBadge(),
+            ),
           ],
         ],
       ),
@@ -1269,8 +1279,8 @@ class _RecommendationContent extends StatelessWidget {
         if (recommendation.agentNotes.isNotEmpty)
           HandDrawnCard(
             color: const Color(0xFFF5F0FF),
-            rotation: -0.4,
-            hoverRotation: -0.4,
+            rotation: 0,
+            hoverRotation: 0,
             padding: const EdgeInsets.all(12),
             child: Text(
               recommendation.agentNotes,
@@ -1376,8 +1386,8 @@ class _RecipeSection extends StatelessWidget {
                 margin: const EdgeInsets.only(bottom: 10),
                 child: HandDrawnCard(
                   color: Colors.white,
-                  rotation: -0.35,
-                  hoverRotation: -0.35,
+                  rotation: 0,
+                  hoverRotation: 0,
                   padding: const EdgeInsets.all(12),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1645,8 +1655,8 @@ class _ToolCallTile extends StatelessWidget {
       margin: const EdgeInsets.only(top: 6),
       child: HandDrawnCard(
         color: Colors.white,
-        rotation: 0.2,
-        hoverRotation: 0.2,
+        rotation: 0,
+        hoverRotation: 0,
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         child: Row(
           children: [
@@ -1705,8 +1715,8 @@ class _SessionCard extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 12),
         child: HandDrawnCard(
           color: isActive ? const Color(0xFFFFF0D9) : Colors.white,
-          rotation: isActive ? -0.5 : 0.4,
-          hoverRotation: isActive ? -0.5 : 0.4,
+          rotation: 0,
+          hoverRotation: 0,
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           child: Row(
             children: [
@@ -2013,6 +2023,119 @@ class _CountButton extends StatelessWidget {
   }
 }
 
+class _SketchOutlinedTextField extends StatelessWidget {
+  final TextEditingController controller;
+  final String label;
+  final String hint;
+  final int maxLines;
+
+  const _SketchOutlinedTextField({
+    required this.controller,
+    required this.label,
+    required this.hint,
+    required this.maxLines,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 6),
+          child: Text(
+            label,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: SketchColors.textMain,
+            ),
+          ),
+        ),
+        CustomPaint(
+          foregroundPainter: const DashedBorderPainter(
+            color: SketchColors.lineBrown,
+            strokeWidth: 2,
+            dashWidth: 7,
+            dashSpace: 4,
+          ),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.elliptical(38, 20),
+                topRight: Radius.elliptical(14, 36),
+                bottomRight: Radius.elliptical(34, 16),
+                bottomLeft: Radius.elliptical(20, 28),
+              ),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x128D6E63),
+                  offset: Offset(4, 4),
+                  blurRadius: 0,
+                ),
+              ],
+            ),
+            child: TextField(
+              controller: controller,
+              maxLines: maxLines,
+              decoration: InputDecoration(
+                hintText: hint,
+                border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                filled: false,
+                hintStyle: const TextStyle(color: AppColors.textLight),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SketchPrimaryButton extends StatelessWidget {
+  final String label;
+  final Future<void> Function() onTap;
+
+  const _SketchPrimaryButton({required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: ShapeDecoration(
+          color: const Color(0xFFE8F7E7),
+          shape: _WobblyOutlineShapeBorder(radius: 18),
+          shadows: const [
+            BoxShadow(
+              color: Color(0x228D6E63),
+              offset: Offset(5, 5),
+              blurRadius: 0,
+            ),
+          ],
+        ),
+        child: Center(
+          child: Text(
+            label,
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+              color: SketchColors.textMain,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _SketchHeader extends StatelessWidget {
   final bool showHistory;
   final bool chatAgentMode;
@@ -2042,8 +2165,8 @@ class _SketchHeader extends StatelessWidget {
         Expanded(
           child: HandDrawnCard(
             color: Colors.white,
-            rotation: -0.7,
-            hoverRotation: -0.7,
+            rotation: 0,
+            hoverRotation: 0,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -2129,8 +2252,8 @@ class _ModeBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     return HandDrawnCard(
       color: chatAgentMode ? const Color(0xFFF3ECFB) : Colors.white,
-      rotation: 0.4,
-      hoverRotation: 0.4,
+      rotation: 0,
+      hoverRotation: 0,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       child: Row(
         children: [
@@ -2606,6 +2729,33 @@ class _CloudBubblePainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _CloudBubblePainter oldDelegate) {
     return oldDelegate.color != color || oldDelegate.isUser != isUser;
+  }
+}
+
+class _MessageBubbleClipper extends CustomClipper<Path> {
+  final bool isUser;
+
+  const _MessageBubbleClipper({required this.isUser});
+
+  @override
+  Path getClip(Size size) {
+    final radius = 24.0;
+    final path = Path();
+    path.addRRect(
+      RRect.fromRectAndCorners(
+        Offset.zero & size,
+        topLeft: Radius.circular(radius),
+        topRight: Radius.circular(radius),
+        bottomLeft: Radius.circular(isUser ? radius : 10),
+        bottomRight: Radius.circular(isUser ? 10 : radius),
+      ),
+    );
+    return path;
+  }
+
+  @override
+  bool shouldReclip(covariant _MessageBubbleClipper oldClipper) {
+    return oldClipper.isUser != isUser;
   }
 }
 
