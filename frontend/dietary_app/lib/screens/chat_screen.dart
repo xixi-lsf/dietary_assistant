@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -900,133 +902,57 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget build(BuildContext context) {
     final intro = _current.messages.length <= 1;
     return Scaffold(
-      backgroundColor: AppColors.bg,
+      backgroundColor: Colors.transparent,
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: Text(_showHistory ? '历史会话' : '饮食管家 🍃'),
-        actions: [
-          GestureDetector(
-            onTap: () => setState(() => _chatAgentMode = !_chatAgentMode),
-            child: Container(
-              margin: const EdgeInsets.only(right: 6),
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: _chatAgentMode ? AppColors.lavenderSoft : AppColors.primarySoft,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: _chatAgentMode ? const Color(0xFFD8C8F0) : AppColors.primaryLight,
-                  width: 1.5,
-                ),
-              ),
-              child: Icon(
-                _chatAgentMode ? Icons.psychology_rounded : Icons.chat_bubble_outline_rounded,
-                color: _chatAgentMode ? AppColors.lavender : AppColors.primary,
-                size: 18,
-              ),
-            ),
-          ),
-          GestureDetector(
-            onTap: _newSession,
-            child: Container(
-              margin: const EdgeInsets.only(right: 12),
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: AppColors.primarySoft,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.primaryLight, width: 1.5),
-              ),
-              child: const Icon(Icons.add_comment_rounded, color: AppColors.primary, size: 18),
-            ),
-          ),
-        ],
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        toolbarHeight: 0,
       ),
-      body: SafeArea(
-        child: Column(
+      body: Container(
+        color: SketchColors.bg,
+        child: Stack(
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
-              child: Column(children: [
-                Row(children: [
-                  Expanded(child: GestureDetector(
-                    onTap: () => setState(() => _showHistory = !_showHistory),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      decoration: BoxDecoration(
-                        color: _showHistory ? AppColors.primarySoft : AppColors.bgCard,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: _showHistory ? AppColors.primaryLight : AppColors.border,
-                          width: 1.5,
+            const Positioned.fill(child: CustomPaint(painter: PaperDotsPainter())),
+            SafeArea(
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
+                    child: Column(
+                      children: [
+                        _SketchHeader(
+                          showHistory: _showHistory,
+                          chatAgentMode: _chatAgentMode,
+                          currentSessionName: _current.name,
+                          sending: _sending,
+                          onToggleHistory: () => setState(() => _showHistory = !_showHistory),
+                          onOpenRecommend: _sending ? null : () => _openRecommendSheet(),
+                          onToggleMode: () => setState(() => _chatAgentMode = !_chatAgentMode),
+                          onNewSession: _newSession,
                         ),
-                      ),
-                      child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                        Icon(_showHistory ? Icons.chat_rounded : Icons.history_rounded,
-                            size: 16, color: _showHistory ? AppColors.primary : AppColors.textMid),
-                        const SizedBox(width: 6),
-                        Text(_showHistory ? '回到聊天' : '历史会话',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w700, fontSize: 13,
-                              color: _showHistory ? AppColors.primary : AppColors.textMid,
-                            )),
-                      ]),
-                    ),
-                  )),
-                  const SizedBox(width: 10),
-                  Expanded(child: GestureDetector(
-                    onTap: _sending ? null : () => _openRecommendSheet(),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: const Color(0xFFE06040), width: 1.5),
-                        boxShadow: [BoxShadow(color: AppColors.primary.withOpacity(0.3), blurRadius: 6, offset: const Offset(1, 3))],
-                      ),
-                      child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                        Icon(Icons.restaurant_menu_rounded, size: 16, color: Colors.white),
-                        SizedBox(width: 6),
-                        Text('菜单推荐', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Colors.white)),
-                      ]),
-                    ),
-                  )),
-                ]),
-                const SizedBox(height: 8),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: _chatAgentMode ? AppColors.lavenderSoft : AppColors.bgCard,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: _chatAgentMode ? const Color(0xFFD8C8F0) : AppColors.border,
-                      width: 1.5,
+                        const SizedBox(height: 10),
+                        _ModeBanner(
+                          showHistory: _showHistory,
+                          chatAgentMode: _chatAgentMode,
+                          currentSessionName: _current.name,
+                        ),
+                      ],
                     ),
                   ),
-                  child: Row(children: [
-                    Icon(
-                      _chatAgentMode ? Icons.auto_awesome_rounded : Icons.forum_rounded,
-                      size: 16,
-                      color: _chatAgentMode ? AppColors.lavender : AppColors.primary,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(child: Text(
-                      _showHistory
-                          ? '当前会话：${_current.name}'
-                          : (_chatAgentMode ? '当前为 Agent 对话模式' : '当前为普通对话模式'),
-                      style: const TextStyle(fontSize: 12, color: AppColors.textMid),
-                    )),
-                  ]),
-                ),
-              ]),
-            ),
-            Expanded(
-              child: _showHistory ? _buildHistoryPanel() : _buildChat(intro),
-            ),
-            _ComposerBar(
-              controller: _inputCtrl,
-              sending: _sending,
-              sendingLabel: _sendingLabel,
-              onMenuTap: _sending ? null : () => _openRecommendSheet(),
-              onSend: _sending ? null : _send,
+                  Expanded(
+                    child: _showHistory ? _buildHistoryPanel() : _buildChat(intro),
+                  ),
+                  _ComposerBar(
+                    controller: _inputCtrl,
+                    sending: _sending,
+                    sendingLabel: _sendingLabel,
+                    onMenuTap: _sending ? null : () => _openRecommendSheet(),
+                    onSend: _sending ? null : _send,
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -1041,17 +967,16 @@ class _ChatScreenState extends State<ChatScreen> {
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       children: [
         if (sorted.isEmpty)
-          Container(
-            margin: const EdgeInsets.only(top: 8),
-            padding: const EdgeInsets.all(32),
-            decoration: BoxDecoration(
-              color: AppColors.yellowSoft,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: const Color(0xFFFFE599), width: 2),
-            ),
+          HandDrawnCard(
+            color: SketchColors.accentSoft,
+            rotation: -0.5,
+            hoverRotation: -0.5,
+            padding: const EdgeInsets.all(28),
             child: const Center(
-              child: Text('还没有历史会话 🌱',
-                  style: TextStyle(color: AppColors.textMid, fontSize: 14)),
+              child: Text(
+                '还没有历史会话 🌱',
+                style: TextStyle(color: SketchColors.textMain, fontSize: 14),
+              ),
             ),
           )
         else
@@ -1075,22 +1000,33 @@ class _ChatScreenState extends State<ChatScreen> {
       children: [
         if (intro)
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppColors.greenSoft,
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: AppColors.greenLight, width: 2),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+            child: HandDrawnCard(
+              color: Colors.white,
+              rotation: -0.8,
+              hoverRotation: -0.8,
+              padding: const EdgeInsets.all(18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: const [
+                      Text('可以这样和豆芽管家说',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            color: SketchColors.textMain,
+                            fontSize: 15,
+                          )),
+                      SizedBox(width: 8),
+                      Text('🌿', style: TextStyle(fontSize: 16)),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  _HintRow('帮我推荐一份适合晚餐的两人菜单'),
+                  _HintRow('今天吃得有点多，晚餐怎么安排轻一点？'),
+                  _HintRow('冰箱里有鸡蛋和番茄，能做什么？'),
+                ],
               ),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Text('可以这样和我说 🌿',
-                    style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.textDark)),
-                const SizedBox(height: 8),
-                _HintRow('帮我推荐一份适合晚餐的两人菜单'),
-                _HintRow('今天吃得有点多，晚餐怎么安排轻一点？'),
-                _HintRow('冰箱里有鸡蛋和番茄，能做什么？'),
-              ]),
             ),
           ),
         Expanded(
@@ -1127,11 +1063,19 @@ class _HintRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
-      child: Row(children: [
-        const Text('• ', style: TextStyle(color: AppColors.green, fontWeight: FontWeight.w700)),
-        Expanded(child: Text(text, style: const TextStyle(fontSize: 13, color: AppColors.textMid))),
-      ]),
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('☁ ', style: TextStyle(color: SketchColors.lineBrown, fontWeight: FontWeight.w700)),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(fontSize: 13, color: SketchColors.textMain, height: 1.45),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -1163,98 +1107,136 @@ class _BubbleState extends State<_Bubble> {
     final isUser = widget.msg.isUser;
     final toolCalls = widget.msg.toolCalls;
     final recommendation = widget.msg.recommendation;
+    final bubbleTint = isUser ? SketchColors.pinkLight : const Color(0xFFF0F9F0);
+    final bubbleAlign = isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start;
 
-    return Align(
-      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        width: MediaQuery.of(context).size.width * 0.84,
-        margin: const EdgeInsets.only(bottom: 12),
-        child: Column(
-          crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-          children: [
-            if (!isUser)
-              Padding(
-                padding: const EdgeInsets.only(left: 6, bottom: 6),
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Container(
-                    width: 28, height: 28,
-                    decoration: BoxDecoration(
-                      color: AppColors.primarySoft,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: AppColors.primaryLight, width: 1.5),
-                    ),
-                    child: const Icon(Icons.spa_outlined, size: 15, color: AppColors.primary),
-                  ),
-                  const SizedBox(width: 8),
-                  const Text('饮食管家',
-                      style: TextStyle(color: AppColors.textMid, fontWeight: FontWeight.w700, fontSize: 12)),
-                ]),
-              ),
-            if (!isUser && toolCalls.isNotEmpty)
-              GestureDetector(
-                onTap: () => setState(() => _showTools = !_showTools),
-                child: Container(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: AppColors.lavenderSoft,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: const Color(0xFFD8C8F0), width: 1.5),
-                  ),
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Row(children: [
-                      const Icon(Icons.auto_awesome_outlined, size: 15, color: AppColors.lavender),
-                      const SizedBox(width: 6),
-                      Expanded(child: Text(
-                        '这一轮调用了 ${toolCalls.length} 个工具',
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textMid),
-                      )),
-                      Icon(_showTools ? Icons.expand_less : Icons.expand_more,
-                          size: 18, color: AppColors.textLight),
-                    ]),
-                    if (_showTools) ...[
-                      const SizedBox(height: 8),
-                      ...toolCalls.map((tc) => _ToolCallTile(tc: tc)),
-                    ],
-                  ]),
-                ),
-              ),
-            Container(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-              decoration: BoxDecoration(
-                color: isUser ? AppColors.primarySoft : AppColors.bgCard,
-                borderRadius: BorderRadius.only(
-                  topLeft: const Radius.circular(22),
-                  topRight: const Radius.circular(22),
-                  bottomLeft: Radius.circular(isUser ? 22 : 6),
-                  bottomRight: Radius.circular(isUser ? 6 : 22),
-                ),
-                border: Border.all(
-                  color: isUser ? AppColors.primaryLight : AppColors.border,
-                  width: 2,
-                ),
-                boxShadow: [
-                  BoxShadow(color: AppColors.shadowOuter, blurRadius: 8, offset: const Offset(2, 3)),
-                  BoxShadow(color: Colors.white.withOpacity(0.7), blurRadius: 3, offset: const Offset(-1, -1)),
-                ],
-              ),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(widget.msg.text,
-                    style: const TextStyle(color: AppColors.textDark, height: 1.55, fontSize: 14)),
-                if (recommendation != null) ...[
-                  const SizedBox(height: 12),
-                  _RecommendationContent(
-                    recommendation: recommendation,
-                    onOpenRecipe: widget.onOpenRecipe,
-                    onLogRecipe: widget.onLogRecipe,
-                    onRetry: () => widget.onRetryRecommendation(recommendation),
-                    onFeedback: () => widget.onFeedbackRecommendation(recommendation),
-                  ),
-                ],
-              ]),
-            ),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Row(
+        mainAxisAlignment:
+            isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          if (!isUser) ...[
+            const _SproutAvatar(),
+            const SizedBox(width: 10),
           ],
-        ),
+          Flexible(
+            child: Column(
+              crossAxisAlignment: bubbleAlign,
+              children: [
+                if (!isUser)
+                  const Padding(
+                    padding: EdgeInsets.only(left: 8, bottom: 6),
+                    child: Text(
+                      '豆芽管家',
+                      style: TextStyle(
+                        color: SketchColors.lineBrown,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                if (!isUser && toolCalls.isNotEmpty)
+                  GestureDetector(
+                    onTap: () => setState(() => _showTools = !_showTools),
+                    child: Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      child: HandDrawnCard(
+                        color: const Color(0xFFF3ECFB),
+                        rotation: -0.6,
+                        hoverRotation: -0.6,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 12,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.auto_awesome_outlined,
+                                  size: 15,
+                                  color: AppColors.lavender,
+                                ),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    '这一轮调用了 ${toolCalls.length} 个工具',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                      color: SketchColors.textMain,
+                                    ),
+                                  ),
+                                ),
+                                Icon(
+                                  _showTools
+                                      ? Icons.expand_less_rounded
+                                      : Icons.expand_more_rounded,
+                                  size: 18,
+                                  color: SketchColors.lineBrown,
+                                ),
+                              ],
+                            ),
+                            if (_showTools) ...[
+                              const SizedBox(height: 8),
+                              ...toolCalls.map((tc) => _ToolCallTile(tc: tc)),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                Transform.rotate(
+                  angle: isUser ? 0.018 : -0.018,
+                  child: CustomPaint(
+                    painter: _CloudBubblePainter(
+                      color: bubbleTint,
+                      isUser: isUser,
+                    ),
+                    child: Container(
+                      constraints: BoxConstraints(
+                        maxWidth: MediaQuery.of(context).size.width * 0.72,
+                      ),
+                      padding: const EdgeInsets.fromLTRB(22, 18, 22, 18),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            widget.msg.text,
+                            style: const TextStyle(
+                              color: SketchColors.textMain,
+                              height: 1.6,
+                              fontSize: 14,
+                            ),
+                          ),
+                          if (recommendation != null) ...[
+                            const SizedBox(height: 12),
+                            _RecommendationContent(
+                              recommendation: recommendation,
+                              onOpenRecipe: widget.onOpenRecipe,
+                              onLogRecipe: widget.onLogRecipe,
+                              onRetry: () =>
+                                  widget.onRetryRecommendation(recommendation),
+                              onFeedback: () => widget
+                                  .onFeedbackRecommendation(recommendation),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (isUser) ...[
+            const SizedBox(width: 10),
+            const _UserBadge(),
+          ],
+        ],
       ),
     );
   }
@@ -1285,18 +1267,21 @@ class _RecommendationContent extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (recommendation.agentNotes.isNotEmpty)
-          Container(
-            width: double.infinity,
-            margin: const EdgeInsets.only(bottom: 10),
+          HandDrawnCard(
+            color: const Color(0xFFF5F0FF),
+            rotation: -0.4,
+            hoverRotation: -0.4,
             padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.lavenderSoft,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0xFFD8C8F0), width: 1.5),
+            child: Text(
+              recommendation.agentNotes,
+              style: const TextStyle(
+                fontSize: 12,
+                height: 1.55,
+                color: SketchColors.textMain,
+              ),
             ),
-            child: Text(recommendation.agentNotes,
-                style: const TextStyle(fontSize: 12, height: 1.5, color: AppColors.textMid)),
           ),
+        if (recommendation.agentNotes.isNotEmpty) const SizedBox(height: 10),
         if (recommendation.dishes.isNotEmpty)
           _RecipeSection(
             title: '推荐菜品',
@@ -1325,37 +1310,17 @@ class _RecommendationContent extends StatelessWidget {
           spacing: 8,
           runSpacing: 8,
           children: [
-            GestureDetector(
+            _SketchActionChip(
+              label: '重新推荐',
+              icon: Icons.refresh_rounded,
               onTap: onRetry,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                decoration: BoxDecoration(
-                  color: AppColors.primarySoft,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.primaryLight, width: 1.5),
-                ),
-                child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                  Icon(Icons.refresh_rounded, size: 14, color: AppColors.primary),
-                  SizedBox(width: 6),
-                  Text('重新推荐', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.primary)),
-                ]),
-              ),
+              fill: const Color(0xFFE8F7E7),
             ),
-            GestureDetector(
+            _SketchActionChip(
+              label: '告诉管家怎么改',
+              icon: Icons.rate_review_outlined,
               onTap: onFeedback,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                decoration: BoxDecoration(
-                  color: AppColors.bgCard,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.border, width: 1.5),
-                ),
-                child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                  Icon(Icons.rate_review_outlined, size: 14, color: AppColors.textMid),
-                  SizedBox(width: 6),
-                  Text('告诉管家怎么改', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textMid)),
-                ]),
-              ),
+              fill: Colors.white,
             ),
           ],
         ),
@@ -1390,72 +1355,131 @@ class _RecipeSection extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.only(bottom: 8),
-          child: Text(title,
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.textMid)),
+          child: Row(
+            children: [
+              const Icon(Icons.push_pin_outlined, size: 14, color: SketchColors.lineBrown),
+              const SizedBox(width: 6),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  color: SketchColors.textMain,
+                ),
+              ),
+            ],
+          ),
         ),
         ...recipes.map((recipe) => GestureDetector(
-          onTap: () => onOpenRecipe(recipe),
-          child: Container(
-            margin: const EdgeInsets.only(bottom: 10),
-            decoration: BoxDecoration(
-              color: AppColors.bgCard,
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: AppColors.border, width: 2),
-              boxShadow: [
-                BoxShadow(color: AppColors.shadowOuter, blurRadius: 6, offset: const Offset(2, 3)),
-              ],
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                _RecipePreviewImage(recipe: recipe),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text(recipe.name,
-                            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: AppColors.textDark)),
-                        const SizedBox(height: 6),
-                        Wrap(spacing: 6, runSpacing: 6, children: [
-                          _InfoBadge(
-                            text: '${_nutritionValue(recipe.nutrition, 'calories').toStringAsFixed(0)} kcal',
-                            icon: Icons.local_fire_department_outlined,
-                          ),
-                          _InfoBadge(
-                            text: '${recipe.timeMinutes} 分钟',
-                            icon: Icons.schedule_outlined,
-                          ),
-                        ]),
-                      ])),
-                      GestureDetector(
-                        onTap: () => onLogRecipe(recipe),
-                        child: Container(
-                          width: 32, height: 32,
-                          decoration: BoxDecoration(
-                            color: AppColors.primarySoft,
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: AppColors.primaryLight, width: 1.5),
-                          ),
-                          child: const Icon(Icons.add_rounded, size: 18, color: AppColors.primary),
+              onTap: () => onOpenRecipe(recipe),
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                child: HandDrawnCard(
+                  color: Colors.white,
+                  rotation: -0.35,
+                  hoverRotation: -0.35,
+                  padding: const EdgeInsets.all(12),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _RecipePreviewImage(recipe: recipe),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        recipe.name,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w800,
+                                          fontSize: 14,
+                                          color: SketchColors.textMain,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Wrap(
+                                        spacing: 6,
+                                        runSpacing: 6,
+                                        children: [
+                                          _InfoBadge(
+                                            text:
+                                                '${_nutritionValue(recipe.nutrition, 'calories').toStringAsFixed(0)} kcal',
+                                            icon: Icons.local_fire_department_outlined,
+                                          ),
+                                          _InfoBadge(
+                                            text: '${recipe.timeMinutes} 分钟',
+                                            icon: Icons.schedule_outlined,
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                GestureDetector(
+                                  onTap: () => onLogRecipe(recipe),
+                                  child: Container(
+                                    width: 34,
+                                    height: 34,
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFFFF0D9),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: SketchColors.lineBrown,
+                                        width: 2,
+                                      ),
+                                      boxShadow: const [
+                                        BoxShadow(
+                                          color: Color(0x338D6E63),
+                                          offset: Offset(3, 3),
+                                          blurRadius: 0,
+                                        ),
+                                      ],
+                                    ),
+                                    child: const Icon(
+                                      Icons.add_rounded,
+                                      size: 18,
+                                      color: SketchColors.lineBrown,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            if (recipe.ingredients.isNotEmpty) ...[
+                              const SizedBox(height: 8),
+                              Text(
+                                recipe.ingredients.take(4).join('、'),
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: SketchColors.textMain,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                            const SizedBox(height: 6),
+                            const Text(
+                              '点击查看图文步骤',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: SketchColors.lineBrown,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ]),
-                    if (recipe.ingredients.isNotEmpty) ...[
-                      const SizedBox(height: 8),
-                      Text(recipe.ingredients.take(4).join('、'),
-                          style: const TextStyle(fontSize: 12, color: AppColors.textLight),
-                          maxLines: 2, overflow: TextOverflow.ellipsis),
                     ],
-                    const SizedBox(height: 6),
-                    const Text('点击查看图文步骤',
-                        style: TextStyle(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.w700)),
-                  ]),
+                  ),
                 ),
-              ]),
-            ),
-          ),
-        )),
+              ),
+            )),
       ],
     );
   }
@@ -1502,13 +1526,24 @@ class _RecipePreviewImageState extends State<_RecipePreviewImage> {
 
   @override
   Widget build(BuildContext context) {
-    final borderRadius = BorderRadius.circular(16);
+    final borderRadius = BorderRadius.circular(18);
     return ClipRRect(
       borderRadius: borderRadius,
       child: Container(
         width: 96,
         height: 96,
-        color: AppColors.primarySoft,
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFF4DF),
+          borderRadius: borderRadius,
+          border: Border.all(color: SketchColors.lineBrown, width: 2),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x338D6E63),
+              offset: Offset(4, 4),
+              blurRadius: 0,
+            ),
+          ],
+        ),
         child: _proxyUrl != null
             ? Image.network(
                 _proxyUrl!,
@@ -1518,8 +1553,12 @@ class _RecipePreviewImageState extends State<_RecipePreviewImage> {
             : _loading
                 ? const Center(
                     child: SizedBox(
-                      width: 18, height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: SketchColors.lineBrown,
+                      ),
                     ),
                   )
                 : _buildPlaceholder(context),
@@ -1530,10 +1569,13 @@ class _RecipePreviewImageState extends State<_RecipePreviewImage> {
   Widget _buildPlaceholder(BuildContext context) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        const Icon(Icons.restaurant, size: 24, color: AppColors.primary),
-        const SizedBox(height: 6),
-        const Text('成品图', style: TextStyle(fontSize: 11, color: AppColors.textLight)),
+      children: const [
+        Icon(Icons.restaurant, size: 24, color: SketchColors.lineBrown),
+        SizedBox(height: 6),
+        Text(
+          '成品图',
+          style: TextStyle(fontSize: 11, color: SketchColors.textMain),
+        ),
       ],
     );
   }
@@ -1601,35 +1643,38 @@ class _ToolCallTile extends StatelessWidget {
 
     return Container(
       margin: const EdgeInsets.only(top: 6),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: AppColors.bgCard,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border, width: 1.5),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 14, color: AppColors.lavender),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 12,
-              color: AppColors.textDark,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          if (summary.isNotEmpty) ...[
+      child: HandDrawnCard(
+        color: Colors.white,
+        rotation: 0.2,
+        hoverRotation: 0.2,
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        child: Row(
+          children: [
+            Icon(icon, size: 14, color: AppColors.lavender),
             const SizedBox(width: 6),
-            Expanded(
-              child: Text(
-                '→ $summary',
-                style: const TextStyle(fontSize: 12, color: AppColors.textLight),
-                overflow: TextOverflow.ellipsis,
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 12,
+                color: SketchColors.textMain,
+                fontWeight: FontWeight.w700,
               ),
             ),
+            if (summary.isNotEmpty) ...[
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  '→ $summary',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: SketchColors.textMain,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
@@ -1657,72 +1702,85 @@ class _SessionCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          color: isActive ? AppColors.primarySoft : AppColors.bgCard,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: isActive ? AppColors.primaryLight : AppColors.border,
-            width: 2,
-          ),
-          boxShadow: [
-            BoxShadow(color: AppColors.shadowOuter, blurRadius: 8, offset: const Offset(2, 3)),
-            BoxShadow(color: Colors.white.withOpacity(0.7), blurRadius: 3, offset: const Offset(-1, -1)),
-          ],
-        ),
-        child: Row(children: [
-          Container(
-            width: 38, height: 38,
-            decoration: BoxDecoration(
-              color: isActive ? AppColors.primary : AppColors.bg,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: isActive ? const Color(0xFFE06040) : AppColors.border,
-                width: 1.5,
+        margin: const EdgeInsets.only(bottom: 12),
+        child: HandDrawnCard(
+          color: isActive ? const Color(0xFFFFF0D9) : Colors.white,
+          rotation: isActive ? -0.5 : 0.4,
+          hoverRotation: isActive ? -0.5 : 0.4,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: isActive ? const Color(0xFFF7D8A8) : const Color(0xFFF4EFE4),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: SketchColors.lineBrown, width: 2),
+                ),
+                child: Icon(
+                  isActive
+                      ? Icons.chat_rounded
+                      : Icons.chat_bubble_outline_rounded,
+                  size: 18,
+                  color: SketchColors.lineBrown,
+                ),
               ),
-            ),
-            child: Icon(
-              isActive ? Icons.chat_rounded : Icons.chat_bubble_outline_rounded,
-              size: 18,
-              color: isActive ? Colors.white : AppColors.textLight,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(session.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 14,
-                  color: isActive ? AppColors.primary : AppColors.textDark,
-                )),
-            const SizedBox(height: 2),
-            Text('${session.messages.length - 1}条消息 · $dateText',
-                style: const TextStyle(fontSize: 12, color: AppColors.textLight)),
-          ])),
-          PopupMenuButton<String>(
-            onSelected: (value) {
-              if (value == 'rename') onRename();
-              if (value == 'delete') onDelete();
-            },
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            child: Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: AppColors.bg,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppColors.border, width: 1.5),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      session.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                        color: SketchColors.textMain,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${session.messages.length - 1}条消息 · $dateText',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: SketchColors.textMain,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              child: const Icon(Icons.more_horiz_rounded, size: 16, color: AppColors.textLight),
-            ),
-            itemBuilder: (_) => const [
-              PopupMenuItem(value: 'rename', child: Text('重命名')),
-              PopupMenuItem(value: 'delete', child: Text('删除')),
+              PopupMenuButton<String>(
+                onSelected: (value) {
+                  if (value == 'rename') onRename();
+                  if (value == 'delete') onDelete();
+                },
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: SketchColors.lineBrown, width: 1.5),
+                  ),
+                  child: const Icon(
+                    Icons.more_horiz_rounded,
+                    size: 16,
+                    color: SketchColors.lineBrown,
+                  ),
+                ),
+                itemBuilder: (_) => const [
+                  PopupMenuItem(value: 'rename', child: Text('重命名')),
+                  PopupMenuItem(value: 'delete', child: Text('删除')),
+                ],
+              ),
             ],
           ),
-        ]),
+        ),
       ),
     );
   }
@@ -1746,86 +1804,104 @@ class _ComposerBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.fromLTRB(12, 4, 12, 12),
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-      decoration: BoxDecoration(
-        color: AppColors.bgCard,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.border, width: 2),
-        boxShadow: [
-          BoxShadow(color: AppColors.shadowOuter, blurRadius: 10, offset: const Offset(2, 4)),
-          BoxShadow(color: Colors.white.withOpacity(0.8), blurRadius: 4, offset: const Offset(-1, -1)),
-        ],
+      margin: const EdgeInsets.fromLTRB(10, 4, 10, 10),
+      child: ClipPath(
+        clipper: _ComposerClipper(),
+        child: Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: Color(0x1F8D6E63),
+                offset: Offset(0, -2),
+                blurRadius: 8,
+              ),
+            ],
+          ),
+          child: CustomPaint(
+            painter: _ComposerBorderPainter(),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 18, 16, 14),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (sending)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Row(
+                        children: [
+                          const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: SketchColors.lineBrown,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            sendingLabel,
+                            style: const TextStyle(
+                              color: SketchColors.textMain,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      _SketchRoundButton(
+                        icon: Icons.restaurant_menu_rounded,
+                        onTap: onMenuTap,
+                        fill: const Color(0xFFFFF0D9),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Container(
+                          constraints: const BoxConstraints(minHeight: 44),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 2,
+                          ),
+                          decoration: ShapeDecoration(
+                            color: Colors.white,
+                            shape: _WobblyOutlineShapeBorder(),
+                            shadows: const [
+                              BoxShadow(
+                                color: Color(0x1A8D6E63),
+                                offset: Offset(3, 3),
+                                blurRadius: 0,
+                              ),
+                            ],
+                          ),
+                          child: TextField(
+                            controller: controller,
+                            decoration: const InputDecoration(
+                              hintText: '问豆芽管家任何饮食问题...',
+                              border: InputBorder.none,
+                              enabledBorder: InputBorder.none,
+                              focusedBorder: InputBorder.none,
+                              filled: false,
+                              contentPadding: EdgeInsets.symmetric(vertical: 12),
+                            ),
+                            maxLines: null,
+                            textInputAction: TextInputAction.send,
+                            onSubmitted: (_) => onSend?.call(),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      _PaperPlaneButton(onTap: onSend),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
-      child: Column(children: [
-        if (sending)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Row(children: [
-              const SizedBox(
-                width: 14, height: 14,
-                child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
-              ),
-              const SizedBox(width: 8),
-              Text(sendingLabel,
-                  style: const TextStyle(color: AppColors.textMid, fontSize: 12)),
-            ]),
-          ),
-        Row(children: [
-          GestureDetector(
-            onTap: onMenuTap,
-            child: Container(
-              width: 42, height: 42,
-              decoration: BoxDecoration(
-                color: onMenuTap != null ? AppColors.primarySoft : AppColors.bg,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: onMenuTap != null ? AppColors.primaryLight : AppColors.border,
-                  width: 1.5,
-                ),
-              ),
-              child: Icon(Icons.restaurant_menu_rounded,
-                  color: onMenuTap != null ? AppColors.primary : AppColors.textLight, size: 20),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: TextField(
-              controller: controller,
-              decoration: const InputDecoration(
-                hintText: '问我任何饮食问题...',
-                border: InputBorder.none,
-                enabledBorder: InputBorder.none,
-                focusedBorder: InputBorder.none,
-                filled: false,
-                contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical: 10),
-              ),
-              maxLines: null,
-              textInputAction: TextInputAction.send,
-              onSubmitted: (_) => onSend?.call(),
-            ),
-          ),
-          const SizedBox(width: 8),
-          GestureDetector(
-            onTap: onSend,
-            child: Container(
-              width: 42, height: 42,
-              decoration: BoxDecoration(
-                color: onSend != null ? AppColors.primary : AppColors.border,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: onSend != null ? const Color(0xFFE06040) : AppColors.border,
-                  width: 1.5,
-                ),
-                boxShadow: onSend != null ? [
-                  BoxShadow(color: AppColors.primary.withOpacity(0.3), blurRadius: 6, offset: const Offset(1, 3)),
-                ] : [],
-              ),
-              child: const Icon(Icons.send_rounded, size: 18, color: Colors.white),
-            ),
-          ),
-        ]),
-      ]),
     );
   }
 }
@@ -1840,15 +1916,21 @@ class _InfoBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: AppColors.bg,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: AppColors.border, width: 1.5),
+      decoration: ShapeDecoration(
+        color: const Color(0xFFFFFBF4),
+        shape: _WobblyOutlineShapeBorder(radius: 14),
       ),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(icon, size: 12, color: AppColors.textLight),
+        Icon(icon, size: 12, color: SketchColors.lineBrown),
         const SizedBox(width: 4),
-        Text(text, style: const TextStyle(fontSize: 11, color: AppColors.textMid, fontWeight: FontWeight.w600)),
+        Text(
+          text,
+          style: const TextStyle(
+            fontSize: 11,
+            color: SketchColors.textMain,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ]),
     );
   }
@@ -1872,20 +1954,23 @@ class _ChoicePill extends StatelessWidget {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          color: selected ? AppColors.primarySoft : AppColors.bgCard,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: selected ? AppColors.primaryLight : AppColors.border,
-            width: selected ? 2 : 1.5,
-          ),
+        decoration: ShapeDecoration(
+          color: selected ? const Color(0xFFFFF0D9) : Colors.white,
+          shape: _WobblyOutlineShapeBorder(radius: 14),
+          shadows: const [
+            BoxShadow(
+              color: Color(0x1A8D6E63),
+              offset: Offset(3, 3),
+              blurRadius: 0,
+            ),
+          ],
         ),
         child: Text(
           label,
-          style: TextStyle(
+          style: const TextStyle(
             fontWeight: FontWeight.w700,
             fontSize: 13,
-            color: selected ? AppColors.primary : AppColors.textMid,
+            color: SketchColors.textMain,
           ),
         ),
       ),
@@ -1893,29 +1978,648 @@ class _ChoicePill extends StatelessWidget {
   }
 }
 
-class _CountButton extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback? onTap;
+class _SketchHeader extends StatelessWidget {
+  final bool showHistory;
+  final bool chatAgentMode;
+  final String currentSessionName;
+  final bool sending;
+  final VoidCallback onToggleHistory;
+  final VoidCallback? onOpenRecommend;
+  final VoidCallback onToggleMode;
+  final VoidCallback onNewSession;
 
-  const _CountButton({required this.icon, required this.onTap});
+  const _SketchHeader({
+    required this.showHistory,
+    required this.chatAgentMode,
+    required this.currentSessionName,
+    required this.sending,
+    required this.onToggleHistory,
+    required this.onOpenRecommend,
+    required this.onToggleMode,
+    required this.onNewSession,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final enabled = onTap != null;
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 36, height: 36,
-        decoration: BoxDecoration(
-          color: enabled ? AppColors.primarySoft : AppColors.bg,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: enabled ? AppColors.primaryLight : AppColors.border,
-            width: 1.5,
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: HandDrawnCard(
+            color: Colors.white,
+            rotation: -0.7,
+            hoverRotation: -0.7,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const _SproutAvatar(size: 52, animated: false),
+                    const SizedBox(width: 10),
+                    const Expanded(
+                      child: Text(
+                        '豆芽管家',
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          color: SketchColors.textMain,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    _SketchActionChip(
+                      label: showHistory ? '回到聊天' : '历史会话',
+                      icon: showHistory ? Icons.chat_rounded : Icons.history_rounded,
+                      onTap: onToggleHistory,
+                      fill: const Color(0xFFFFF0D9),
+                    ),
+                    const SizedBox(width: 8),
+                    _SketchActionChip(
+                      label: '菜单推荐',
+                      icon: Icons.restaurant_menu_rounded,
+                      onTap: onOpenRecommend,
+                      fill: const Color(0xFFE8F7E7),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  showHistory ? '翻翻旧对话，继续上次的灵感。' : '今天想吃什么？我来帮你安排。',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: SketchColors.textMain,
+                    height: 1.45,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
-        child: Icon(icon, size: 18, color: enabled ? AppColors.primary : AppColors.textLight),
+        const SizedBox(width: 10),
+        Column(
+          children: [
+            _SketchRoundButton(
+              icon: chatAgentMode
+                  ? Icons.psychology_rounded
+                  : Icons.chat_bubble_outline_rounded,
+              onTap: onToggleMode,
+              fill: chatAgentMode ? const Color(0xFFF3ECFB) : Colors.white,
+            ),
+            const SizedBox(height: 8),
+            _SketchRoundButton(
+              icon: Icons.add_comment_rounded,
+              onTap: onNewSession,
+              fill: const Color(0xFFE8F7E7),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _ModeBanner extends StatelessWidget {
+  final bool showHistory;
+  final bool chatAgentMode;
+  final String currentSessionName;
+
+  const _ModeBanner({
+    required this.showHistory,
+    required this.chatAgentMode,
+    required this.currentSessionName,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return HandDrawnCard(
+      color: chatAgentMode ? const Color(0xFFF3ECFB) : Colors.white,
+      rotation: 0.4,
+      hoverRotation: 0.4,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      child: Row(
+        children: [
+          Icon(
+            showHistory
+                ? Icons.history_rounded
+                : (chatAgentMode
+                    ? Icons.auto_awesome_rounded
+                    : Icons.forum_rounded),
+            size: 16,
+            color: SketchColors.lineBrown,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              showHistory
+                  ? '当前会话：$currentSessionName'
+                  : (chatAgentMode ? '当前为 Agent 对话模式' : '当前为普通对话模式'),
+              style: const TextStyle(
+                fontSize: 12,
+                color: SketchColors.textMain,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
+}
+
+class _SproutAvatar extends StatefulWidget {
+  final double size;
+  final bool animated;
+
+  const _SproutAvatar({this.size = 54, this.animated = true});
+
+  @override
+  State<_SproutAvatar> createState() => _SproutAvatarState();
+}
+
+class _SproutAvatarState extends State<_SproutAvatar>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _rotation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 3),
+    );
+    _rotation = Tween<double>(begin: -0.052, end: 0.052).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+    if (widget.animated) {
+      _controller.repeat(reverse: true);
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _SproutAvatar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.animated && !_controller.isAnimating) {
+      _controller.repeat(reverse: true);
+    }
+    if (!widget.animated && _controller.isAnimating) {
+      _controller.stop();
+      _controller.value = 0.5;
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final avatar = SizedBox(
+      width: widget.size,
+      height: widget.size + 10,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Positioned(
+            top: widget.size * 0.06,
+            left: 0,
+            right: 0,
+            child: Container(
+              width: widget.size,
+              height: widget.size,
+              decoration: BoxDecoration(
+                color: const Color(0xFFCBE8C7),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(widget.size * 0.48),
+                  topRight: Radius.circular(widget.size * 0.48),
+                  bottomLeft: Radius.circular(widget.size * 0.38),
+                  bottomRight: Radius.circular(widget.size * 0.38),
+                ),
+                border: Border.all(color: SketchColors.lineBrown, width: 2.5),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x2A8D6E63),
+                    offset: Offset(4, 4),
+                    blurRadius: 0,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Positioned(
+            top: -2,
+            left: widget.size * 0.26,
+            child: Transform.rotate(
+              angle: -0.45,
+              child: Container(
+                width: widget.size * 0.2,
+                height: widget.size * 0.34,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF88C97A),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: SketchColors.lineBrown, width: 2),
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            top: widget.size * 0.02,
+            right: widget.size * 0.24,
+            child: Transform.rotate(
+              angle: 0.45,
+              child: Container(
+                width: widget.size * 0.18,
+                height: widget.size * 0.3,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF9BDB86),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: SketchColors.lineBrown, width: 2),
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            top: widget.size * 0.42,
+            left: widget.size * 0.28,
+            child: Row(
+              children: [
+                _eye(),
+                SizedBox(width: widget.size * 0.16),
+                _eye(),
+              ],
+            ),
+          ),
+          Positioned(
+            bottom: widget.size * 0.18,
+            left: widget.size * 0.34,
+            child: Container(
+              width: widget.size * 0.26,
+              height: widget.size * 0.1,
+              decoration: const BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(color: SketchColors.lineBrown, width: 2),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (!widget.animated) return avatar;
+
+    return AnimatedBuilder(
+      animation: _rotation,
+      builder: (_, child) => Transform.rotate(
+        angle: _rotation.value,
+        child: child,
+      ),
+      child: avatar,
+    );
+  }
+
+  Widget _eye() {
+    return Container(
+      width: widget.size * 0.08,
+      height: widget.size * 0.08,
+      decoration: const BoxDecoration(
+        color: SketchColors.lineBrown,
+        shape: BoxShape.circle,
+      ),
+    );
+  }
+}
+
+class _UserBadge extends StatelessWidget {
+  const _UserBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 38,
+      height: 38,
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFE7EC),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: SketchColors.lineBrown, width: 2),
+      ),
+      child: const Icon(Icons.face_retouching_natural_rounded,
+          size: 18, color: SketchColors.lineBrown),
+    );
+  }
+}
+
+class _SketchActionChip extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final VoidCallback? onTap;
+  final Color fill;
+
+  const _SketchActionChip({
+    required this.label,
+    required this.icon,
+    required this.onTap,
+    required this.fill,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedOpacity(
+        opacity: onTap == null ? 0.5 : 1,
+        duration: const Duration(milliseconds: 180),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: ShapeDecoration(
+            color: fill,
+            shape: _WobblyOutlineShapeBorder(radius: 14),
+            shadows: const [
+              BoxShadow(
+                color: Color(0x1A8D6E63),
+                offset: Offset(3, 3),
+                blurRadius: 0,
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 14, color: SketchColors.lineBrown),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: SketchColors.textMain,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SketchRoundButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback? onTap;
+  final Color fill;
+
+  const _SketchRoundButton({
+    required this.icon,
+    required this.onTap,
+    required this.fill,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedOpacity(
+        opacity: onTap == null ? 0.45 : 1,
+        duration: const Duration(milliseconds: 180),
+        child: Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: fill,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: SketchColors.lineBrown, width: 2),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x1A8D6E63),
+                offset: Offset(4, 4),
+                blurRadius: 0,
+              ),
+            ],
+          ),
+          child: Icon(icon, size: 20, color: SketchColors.lineBrown),
+        ),
+      ),
+    );
+  }
+}
+
+class _PaperPlaneButton extends StatelessWidget {
+  final VoidCallback? onTap;
+
+  const _PaperPlaneButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedOpacity(
+        opacity: onTap == null ? 0.45 : 1,
+        duration: const Duration(milliseconds: 180),
+        child: Transform.rotate(
+          angle: 0.08,
+          child: Container(
+            width: 46,
+            height: 46,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF0F9F0),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: SketchColors.lineBrown, width: 2),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x1F8D6E63),
+                  offset: Offset(4, 4),
+                  blurRadius: 0,
+                ),
+              ],
+            ),
+            child: const Icon(
+              Icons.send_rounded,
+              size: 20,
+              color: SketchColors.lineBrown,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ComposerClipper extends CustomClipper<Path> {
+  @override
+  Path getClip(Size size) {
+    final path = Path();
+    path.moveTo(0, size.height * 0.13);
+    path.quadraticBezierTo(
+      size.width * 0.25,
+      size.height * 0.02,
+      size.width * 0.5,
+      size.height * 0.08,
+    );
+    path.quadraticBezierTo(
+      size.width * 0.75,
+      size.height * 0.13,
+      size.width,
+      0,
+    );
+    path.lineTo(size.width, size.height);
+    path.lineTo(0, size.height);
+    path.close();
+    return path;
+  }
+
+  @override
+  bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
+}
+
+class _ComposerBorderPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = SketchColors.lineBrown
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.5;
+    final path = Path();
+    path.moveTo(0, size.height * 0.13);
+    path.quadraticBezierTo(
+      size.width * 0.25,
+      size.height * 0.02,
+      size.width * 0.5,
+      size.height * 0.08,
+    );
+    path.quadraticBezierTo(
+      size.width * 0.75,
+      size.height * 0.13,
+      size.width,
+      0,
+    );
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _CloudBubblePainter extends CustomPainter {
+  final Color color;
+  final bool isUser;
+
+  const _CloudBubblePainter({required this.color, required this.isUser});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final path = _buildPath(size);
+    final fill = Paint()..color = color;
+    final stroke = Paint()
+      ..color = SketchColors.lineBrown
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.4;
+
+    canvas.drawShadow(path, const Color(0x338D6E63), 3, false);
+    canvas.drawPath(path, fill);
+    final dashed = _dashPath(path, dashWidth: 10, dashGap: 6);
+    canvas.drawPath(dashed, stroke);
+  }
+
+  Path _buildPath(Size size) {
+    final width = size.width;
+    final height = size.height;
+    final path = Path();
+    final left = 8.0;
+    final top = 8.0;
+    final right = width - 8.0;
+    final bottom = height - 8.0;
+    final anchor = isUser ? right - 36 : left + 36;
+
+    path.moveTo(left + 22, top + 4);
+    path.quadraticBezierTo(left - 2, top + 8, left + 8, top + 34);
+    path.quadraticBezierTo(left - 6, height * 0.5, left + 18, bottom - 18);
+    if (!isUser) {
+      path.quadraticBezierTo(left - 10, bottom - 4, left + 16, bottom - 10);
+      path.quadraticBezierTo(anchor - 18, bottom + 8, anchor, bottom - 6);
+    } else {
+      path.quadraticBezierTo(left + width * 0.28, bottom + 4, left + width * 0.45, bottom - 8);
+    }
+    path.quadraticBezierTo(width * 0.55, bottom + 8, right - 20, bottom - 12);
+    if (isUser) {
+      path.quadraticBezierTo(right + 8, bottom - 4, right - 14, bottom - 26);
+      path.quadraticBezierTo(anchor + 20, bottom + 10, anchor - 6, bottom - 10);
+    } else {
+      path.quadraticBezierTo(right + 8, bottom - 2, right - 10, bottom - 28);
+    }
+    path.quadraticBezierTo(right + 8, height * 0.45, right - 6, top + 28);
+    path.quadraticBezierTo(right + 2, top - 8, right - 24, top + 4);
+    path.quadraticBezierTo(width * 0.5, top - 8, left + 22, top + 4);
+    path.close();
+    return path;
+  }
+
+  Path _dashPath(Path source, {required double dashWidth, required double dashGap}) {
+    final dest = Path();
+    for (final metric in source.computeMetrics()) {
+      double distance = 0;
+      while (distance < metric.length) {
+        final next = math.min(distance + dashWidth, metric.length);
+        dest.addPath(metric.extractPath(distance, next), Offset.zero);
+        distance += dashWidth + dashGap;
+      }
+    }
+    return dest;
+  }
+
+  @override
+  bool shouldRepaint(covariant _CloudBubblePainter oldDelegate) {
+    return oldDelegate.color != color || oldDelegate.isUser != isUser;
+  }
+}
+
+class _WobblyOutlineShapeBorder extends ShapeBorder {
+  final double radius;
+
+  const _WobblyOutlineShapeBorder({this.radius = 18});
+
+  @override
+  EdgeInsetsGeometry get dimensions => const EdgeInsets.all(2);
+
+  @override
+  Path getInnerPath(Rect rect, {TextDirection? textDirection}) {
+    return getOuterPath(rect.deflate(2), textDirection: textDirection);
+  }
+
+  @override
+  Path getOuterPath(Rect rect, {TextDirection? textDirection}) {
+    final r = radius;
+    final path = Path();
+    path.moveTo(rect.left + r, rect.top + 2);
+    path.quadraticBezierTo(rect.left + rect.width * 0.18, rect.top - 3,
+        rect.left + rect.width * 0.32, rect.top + 3);
+    path.quadraticBezierTo(rect.left + rect.width * 0.56, rect.top + 8,
+        rect.right - r, rect.top + 1);
+    path.quadraticBezierTo(rect.right + 2, rect.top + 4, rect.right - 2,
+        rect.top + r * 0.9);
+    path.quadraticBezierTo(rect.right - 4, rect.center.dy,
+        rect.right - 1, rect.bottom - r);
+    path.quadraticBezierTo(rect.right - rect.width * 0.22, rect.bottom + 4,
+        rect.center.dx, rect.bottom - 1);
+    path.quadraticBezierTo(rect.left + rect.width * 0.18, rect.bottom + 6,
+        rect.left + 4, rect.bottom - r * 0.9);
+    path.quadraticBezierTo(rect.left - 4, rect.center.dy, rect.left + 2,
+        rect.top + r);
+    path.close();
+    return path;
+  }
+
+  @override
+  void paint(Canvas canvas, Rect rect, {TextDirection? textDirection}) {
+    final path = getOuterPath(rect, textDirection: textDirection);
+    final paint = Paint()
+      ..color = SketchColors.lineBrown
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2;
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  ShapeBorder scale(double t) => _WobblyOutlineShapeBorder(radius: radius * t);
 }
