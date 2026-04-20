@@ -1,4 +1,5 @@
 import 'dart:js_interop';
+import 'dart:js_interop_unsafe';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:web/web.dart' as web;
 
@@ -17,9 +18,9 @@ class ApiConfig {
   /// 从 web/env.js 中读取 APP_CONFIG.API_BASE_URL
   static String _getEnvBaseUrl() {
     try {
-      final config = (web.window as JSObject).getProperty('APP_CONFIG'.toJS);
+      final config = (web.window as JSObject)['APP_CONFIG'];
       if (config != null && config.isA<JSObject>()) {
-        final url = (config as JSObject).getProperty('API_BASE_URL'.toJS);
+        final url = (config as JSObject)['API_BASE_URL'];
         if (url != null && url.isA<JSString>()) {
           return (url as JSString).toDart;
         }
