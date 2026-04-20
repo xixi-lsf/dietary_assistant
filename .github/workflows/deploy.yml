@@ -19,6 +19,17 @@ jobs:
           tmp=$(mktemp -d)
           cp Dockerfile "$tmp/"
           cp -r backend "$tmp/"
+          # 创建 HF Spaces 需要的 README.md
+          cat > "$tmp/README.md" << 'EOF'
+          ---
+          title: Dietary Assistant API
+          emoji: 🥗
+          colorFrom: green
+          colorTo: yellow
+          sdk: docker
+          pinned: false
+          ---
+          EOF
           cd "$tmp"
           git init -b main
           git lfs install
