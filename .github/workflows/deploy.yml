@@ -9,16 +9,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          lfs: true
 
       - name: Push to Hugging Face Spaces
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_USERNAME: ${{ secrets.HF_USERNAME }}
         run: |
+          # 创建一个只包含后端文件的临时仓库推送到 HF
+          tmp=$(mktemp -d)
+          cp Dockerfile "$tmp/"
+          cp -r backend "$tmp/"
+          cd "$tmp"
+          git init
           git lfs install
-          git remote add hf https://user:$HF_TOKEN@huggingface.co/spaces/${{ secrets.HF_USERNAME }}/dietary-assistant
+          git add .
+          git config user.email "actions@github.com"
+          git config user.name "GitHub Actions"
+          git commit -m "deploy backend"
+          git remote add hf "https://user:$HF_TOKEN@huggingface.co/spaces/$HF_USERNAME/dietary-assistant"
           git push hf main --force
 
   deploy-frontend:
