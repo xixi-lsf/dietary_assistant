@@ -19,7 +19,6 @@ build/
 
 # Logs
 *.log
-*.txt
 
 # Flutter
 frontend/dietary_app/build/

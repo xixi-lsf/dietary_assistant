@@ -1,0 +1,1715 @@
+╭─── Claude Code v2.1.87 ──────────────────────────────────────────────────────╮
+│                                    │ Tips for getting started                │
+│            Welcome back!           │ Run /init to create a CLAUDE.md file w… │
+│                                    │ ─────────────────────────────────────── │
+│               ▐▛███▜▌              │ Recent activity                         │
+│              ▝▜█████▛▘             │ No recent activity                      │
+│                ▘▘ ▝▝               │                                         │
+│                                    │                                         │
+│   Sonnet 4.6 · API Usage Billing   │                                         │
+│        D:\dietary_assistant        │                                         │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+> 继续私人饮食助理项目，[] 加入图片生成模型；                                   
+[] 修改菜品推荐，不用非要按照三个菜+三个主食这样的逻辑推荐，要灵活一点，尤其是  
+用户表达了明确的需求的时候，比如“想吃牛肉”，就应该多推荐几种牛肉相关的菜，“想吃 
+三明治”，就应该多推荐一些不同三明治的做法，一定要把用户需求放在首位；           
+[] 菜品推荐要更具有多样性，不要来回就给用户推荐哪几样菜                         
+[] 需要确定菜品推荐是否参考了冰箱中录入的食材？                                 
+[] 历史缓存要保留一段时间，比如不能让用户跳转到“首页”，再回到“菜单”页面，刚刚推 
+荐的菜就不见了；推荐历史至少要保留一天；                                        
+[] 对话历史也要保存，就像普通的chatAI一样，有会话和历史会话，每一个会话有名字， 
+这是现在的改进方向，图片生成模型你有什么推荐（我希望API KEY便宜），Qwen         
+Image你觉得可以吗？                                                             
+
+  Recalled 1 memory (ctrl+o to expand)
+
+● Explore(探索项目关键文件)
+  ⎿  Done (3 tool uses · 20.1k tokens · 1m 4s)
+  (ctrl+o to expand)
+
+● Explore(读取更多关键文件)
+  ⎿  Done (2 tool uses · 18.0k tokens · 1m 33s)
+  (ctrl+o to expand)
+
+  Read 3 files (ctrl+o to expand)
+
+● 好，现在我对代码结构有了完整了解。先回答你的问题，然后开始实现。
+
+  关于图片生成模型： Qwen Image（通义万象）完全可以，推荐用
+  wanx2.1-t2i-turbo，价格约 0.04元/张，需要阿里云 DashScope API Key（和
+  Anthropic Key 分开）。比 DALL-E 便宜很多，对中文食物描述理解也更好。
+
+  现在开始实现所有改动：
+
+  Read 8 files (ctrl+o to expand)
+
+● 现在我有了完整的代码了解，开始实现所有改动。分批进行：
+
+● Step 1: 修改 ai_service.py — 灵活推荐 prompt + Qwen 图片生成
+
+● Update(backend\services\ai_service.py)
+  ⎿  Added 7 lines, removed 6 lines
+      43      advice_str = f"\n营养建议（请据此调整营养侧重）：{nutrition
+          _advice}" if nutrition_advice and nutrition_advice.strip() else
+           ""
+      44      pref_str = f"\n【特殊需求，必须严格遵守】：{preferences}" i
+          f preferences and preferences.strip() else ""
+      45  
+      46 -    prompt = f"""你是一位专业营养师，请分别推荐菜肴和主食，让用
+         -户自由搭配。                                                   
+      46 +    prompt = f"""你是一位专业营养师，请根据用户需求推荐菜肴和主
+         +食，让用户自由搭配。                                           
+      47  
+      48  场合：{occasion or '日常'}
+      49  用餐人数：{people_count}人
+     ...
+      72    ]
+      73  }}
+      74  
+      75 -要求：                                                         
+      76 -- dishes推荐3道，荤素各有                                      
+      77 -- staples推荐3种，多样化（米饭/面食/粗粮等）                   
+      78 -- 若用户有热量限制（如"300大卡以内"），则每道菜的热量 + 每种主 
+         -食的热量都要确保任意组合后合计不超过该限制                     
+      79 -- nutrition数据要准确，单位kcal/g"""                           
+      75 +推荐策略（按优先级）：                                         
+      76 +1. 【用户需求优先】若用户有明确需求（如"想吃牛肉""想吃三明治"" 
+         +想吃辣的"），dishes 应以该需求为核心，推荐4-6道相关菜品，展示多
+         +种做法/口味变化；staples 配合需求灵活调整（如三明治需求则 stapl
+         +es 可为空或推荐面包类）                                        
+      77 +2. 【多样性】每次推荐的菜品要与常见菜品有所不同，避免总是番茄炒
+         +蛋、清炒时蔬等，多考虑冰箱食材                                 
+      78 +3. 【无特殊需求时】dishes 推荐3-4道，荤素搭配；staples 推荐2-3 
+         +种多样化主食                                                   
+      79 +4. 若用户有热量限制，确保任意菜+主食组合不超过该限制           
+      80 +5. nutrition数据要准确，单位kcal/g"""                          
+      81  
+      82      data = _post(api_key, base_url or DEFAULT_AI_BASE_URL, {
+      83          "model": "claude-sonnet-4-6",
+
+● Now add Qwen image generation function to ai_service.py:
+
+● Update(backend\services\ai_service.py)
+  ⎿  Added 43 lines
+      255      return data["content"][0]["text"].strip()
+      256  
+      257  
+      258 +def generate_image_qwen(                                      
+      259 +    image_api_key: str,                                       
+      260 +    prompt: str,                                              
+      261 +    image_base_url: str = None,                               
+      262 +) -> str | None:                                              
+      263 +    """调用通义万象 wanx2.1-t2i-turbo 生成图片，返回图片URL或N
+          +one"""                                                        
+      264 +    base = (image_base_url or "https://dashscope.aliyuncs.com"
+          +).rstrip("/")                                                 
+      265 +    # 提交任务                                                
+      266 +    submit_url = f"{base}/api/v1/services/aigc/text2image/imag
+          +e-synthesis"                                                  
+      267 +    headers = {                                               
+      268 +        "Authorization": f"Bearer {image_api_key}",           
+      269 +        "Content-Type": "application/json",                   
+      270 +        "X-DashScope-Async": "enable",                        
+      271 +    }                                                         
+      272 +    payload = {                                               
+      273 +        "model": "wanx2.1-t2i-turbo",                         
+      274 +        "input": {"prompt": prompt},                          
+      275 +        "parameters": {"size": "512*512", "n": 1},            
+      276 +    }                                                         
+      277 +    r = httpx.post(submit_url, headers=headers, json=payload, 
+          +timeout=30)                                                   
+      278 +    r.raise_for_status()                                      
+      279 +    task_id = r.json()["output"]["task_id"]                   
+      280 +                                                              
+      281 +    # 轮询结果（最多30秒）                                    
+      282 +    query_url = f"{base}/api/v1/tasks/{task_id}"              
+      283 +    query_headers = {"Authorization": f"Bearer {image_api_key}
+          +"}                                                            
+      284 +    import time                                               
+      285 +    for _ in range(15):                                       
+      286 +        time.sleep(2)                                         
+      287 +        qr = httpx.get(query_url, headers=query_headers, timeo
+          +ut=15)                                                        
+      288 +        qr.raise_for_status()                                 
+      289 +        output = qr.json().get("output", {})                  
+      290 +        status = output.get("task_status", "")                
+      291 +        if status == "SUCCEEDED":                             
+      292 +            results = output.get("results", [])               
+      293 +            if results:                                       
+      294 +                return results[0].get("url")                  
+      295 +            return None                                       
+      296 +        if status in ("FAILED", "CANCELED"):                  
+      297 +            return None                                       
+      298 +    return None                                               
+      299 +                                                              
+      300 +                                                              
+      301  def identify_ingredients(api_key: str, image_bytes: bytes, med
+           ia_type: str = "image/jpeg", base_url: str = None) -> list[str
+           ]:
+      302      image_data = base64.standard_b64encode(image_bytes).decode
+           ("utf-8")
+      303  
+
+● Now update generate_recipe_detail to actually call Qwen image generation when
+  image_api_key is provided:
+
+● Update(backend\services\ai_service.py)
+  ⎿  Added 16 lines, removed 3 lines
+      128              text = text[4:]
+      129      step_details = json.loads(text)
+      130  
+      131 -    # 图片生成占位（image_api_key 有值时调用，暂时返回 None） 
+      131      for step in step_details:
+      133 -        step["result_image_url"] = None                       
+      134 -        step["process_image_url"] = None                      
+      132 +        if image_api_key:                                     
+      133 +            try:                                              
+      134 +                if step.get("result_image_prompt"):           
+      135 +                    step["result_image_url"] = generate_image_
+          +qwen(image_api_key, step["result_image_prompt"], image_base_ur
+          +l)                                                            
+      136 +                else:                                         
+      137 +                    step["result_image_url"] = None           
+      138 +                if step.get("process_image_prompt"):          
+      139 +                    step["process_image_url"] = generate_image
+          +_qwen(image_api_key, step["process_image_prompt"], image_base_
+          +url)                                                          
+      140 +                else:                                         
+      141 +                    step["process_image_url"] = None          
+      142 +            except Exception:                                 
+      143 +                step["result_image_url"] = None               
+      144 +                step["process_image_url"] = None              
+      145 +        else:                                                 
+      146 +            step["result_image_url"] = None                   
+      147 +            step["process_image_url"] = None                  
+      148  
+      149      return step_details
+      150  
+
+● Now add shared_preferences to pubspec.yaml for menu cache and chat history
+  persistence:
+
+● Update(frontend\dietary_app\pubspec.yaml)
+  ⎿  Added 1 line
+      16    fl_chart: ^0.67.0
+      17    provider: ^6.1.2
+      18    cached_network_image: ^3.3.1
+      19 +  shared_preferences: ^2.2.3                                   
+      20  
+      21  dev_dependencies:
+      22    flutter_test:
+
+  Read 1 file (ctrl+o to expand)
+
+> 怎么用千问这个模型呢？需要API KEY吗还是什么？ 
+  Read 1 file (ctrl+o to expand)
+
+● Now I'll rewrite menu_screen.dart with 24h cache, then chat_screen.dart with
+  session history. Starting with menu_screen:
+
+● Write(frontend\dietary_app\lib\screens\menu_screen.dart)
+  ⎿  Added 85 lines, removed 47 lines
+      1 +import 'dart:convert';                                          
+      2  import 'package:flutter/material.dart';
+      3 +import 'package:shared_preferences/shared_preferences.dart';    
+      4  import '../services/api_service.dart';
+      5  import '../config/api_config.dart';
+      6  import '../models/models.dart';
+     ...
+      22  
+      23    List<Recipe> _dishes = [];
+      24    List<Recipe> _staples = [];
+      23 -  List<Recipe> _legacyRecipes = []; // 兼容旧格式              
+      25 +  List<Recipe> _legacyRecipes = [];                            
+      26    bool _loading = false;
+      27  
+      28    Recipe? _selectedDish;
+      29    Recipe? _selectedStaple;
+      28 -  Recipe? _selectedLegacy; // 旧格式选中                       
+      30 +  Recipe? _selectedLegacy;                                     
+      31  
+      30 -  // 菜品反馈                                                  
+      32    final _recipeFeedbackCtrl = TextEditingController();
+      33    int _recipeScore = 4;
+      34    Recipe? _feedbackTarget;
+      35  
+      36 +  static const _cacheKey = 'menu_cache';                       
+      37 +  static const _cacheTsKey = 'menu_cache_ts';                  
+      38 +                                                               
+      39    double get _combinedCalories =>
+      40        ((_selectedDish?.nutrition['calories'] ?? 0) as num).toDo
+          uble() +
+      41        ((_selectedStaple?.nutrition['calories'] ?? 0) as num).to
+          Double();
+      42  
+      43 +  @override                                                    
+      44 +  void initState() {                                           
+      45 +    super.initState();                                         
+      46 +    _loadCache();                                              
+      47 +  }                                                            
+      48 +                                                               
+      49 +  Future<void> _loadCache() async {                            
+      50 +    try {                                                      
+      51 +      final prefs = await SharedPreferences.getInstance();     
+      52 +      final ts = prefs.getInt(_cacheTsKey) ?? 0;               
+      53 +      final now = DateTime.now().millisecondsSinceEpoch;       
+      54 +      // 24小时内有效                                          
+      55 +      if (now - ts < 24 * 60 * 60 * 1000) {                    
+      56 +        final raw = prefs.getString(_cacheKey);                
+      57 +        if (raw != null) {                                     
+      58 +          final data = jsonDecode(raw) as Map<String, dynamic>;
+      59 +          setState(() {                                        
+      60 +            if (data['dishes'] != null) {                      
+      61 +              _dishes = (data['dishes'] as List).map((e) => Rec
+         +ipe.fromJson(Map<String, dynamic>.from(e))).toList();          
+      62 +              _staples = (data['staples'] as List? ?? []).map((
+         +e) => Recipe.fromJson(Map<String, dynamic>.from(e))).toList(); 
+      63 +            } else if (data['recipes'] != null) {              
+      64 +              _legacyRecipes = (data['recipes'] as List).map((e
+         +) => Recipe.fromJson(Map<String, dynamic>.from(e))).toList();  
+      65 +            }                                                  
+      66 +          });                                                  
+      67 +        }                                                      
+      68 +      }                                                        
+      69 +    } catch (_) {}                                             
+      70 +  }                                                            
+      71 +                                                               
+      72 +  Future<void> _saveCache(Map<String, dynamic> data) async {   
+      73 +    try {                                                      
+      74 +      final prefs = await SharedPreferences.getInstance();     
+      75 +      await prefs.setString(_cacheKey, jsonEncode(data));      
+      76 +      await prefs.setInt(_cacheTsKey, DateTime.now().millisecon
+         +dsSinceEpoch);                                                 
+      77 +    } catch (_) {}                                             
+      78 +  }                                                            
+      79 +                                                               
+      80    Future<void> _recommend({String feedback = ''}) async {
+      81      setState(() {
+      82        _loading = true;
+     ...
+      114          'nutrition_advice': nutritionAdvice,
+      115        });
+      116  
+      117 +      await _saveCache(data);                                 
+      118 +                                                              
+      119        setState(() {
+      120          if (data['dishes'] != null) {
+      121            _dishes = (data['dishes'] as List).map((e) => Recipe
+           .fromJson(Map<String, dynamic>.from(e))).toList();
+       79 -          _staples = (data['staples'] as List).map((e) => Reci
+          -pe.fromJson(Map<String, dynamic>.from(e))).toList();          
+      122 +          _staples = (data['staples'] as List? ?? []).map((e) 
+          +=> Recipe.fromJson(Map<String, dynamic>.from(e))).toList();   
+      123          } else if (data['recipes'] != null) {
+      124            _legacyRecipes = (data['recipes'] as List).map((e) =
+           > Recipe.fromJson(Map<String, dynamic>.from(e))).toList();
+      125          } else {
+     ...
+      161            ElevatedButton(
+      162              onPressed: () async {
+      163                Navigator.pop(ctx);
+      121 -              // 分开记录菜和主食两条                         
+      164                final dish = _selectedDish!;
+      165                final staple = _selectedStaple!;
+      166                await ApiService.post('/nutrition/', {
+     ...
+      251      return Scaffold(
+      252        appBar: AppBar(title: const Text('菜单推荐'), centerTitl
+           e: true),
+      253        body: Column(children: [
+      212 -        // 筛选区                                             
+      254          Padding(
+      255            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      256            child: Column(children: [
+     ...
+      269                Text('$_people', style: const TextStyle(fontWeig
+           ht: FontWeight.bold)),
+      270                IconButton(icon: const Icon(Icons.add, size: 18)
+           , onPressed: () => setState(() => _people++)),
+      271              ]),
+      231 -            TextField(controller: _prefCtrl, decoration: const
+          - InputDecoration(labelText: '特殊需求（如：300大卡以内的早餐）
+          -', isDense: true)),                                           
+      272 +            TextField(controller: _prefCtrl, decoration: const
+          + InputDecoration(labelText: '特殊需求（如：想吃牛肉、300大卡以
+          +内的早餐）', isDense: true)),                                 
+      273              const SizedBox(height: 8),
+      274              SizedBox(
+      275                width: double.infinity,
+     ...
+      288                ? const Center(child: CircularProgressIndicator(
+           ))
+      289                : (!hasNewFormat && _legacyRecipes.isEmpty)
+      290                    ? const Center(child: Text('点击"推荐菜单"获
+           取今日推荐', style: TextStyle(color: Colors.grey)))
+      250 -                  : ListView(                                 
+      251 -                      padding: const EdgeInsets.all(12),      
+      252 -                      children: [                             
+      291 +                  : SingleChildScrollView(                    
+      292 +                      padding: const EdgeInsets.all(16),      
+      293 +                      child: Column(crossAxisAlignment: CrossA
+          +xisAlignment.start, children: [                               
+      294                          if (hasNewFormat) ...[
+      254 -                          // 合计热量 + 确认按钮              
+      255 -                          if (_selectedDish != null || _select
+          -edStaple != null)                                             
+      256 -                            Container(                        
+      257 -                              margin: const EdgeInsets.only(bo
+          -ttom: 8),                                                     
+      258 -                              padding: const EdgeInsets.symmet
+          -ric(horizontal: 12, vertical: 8),                             
+      259 -                              decoration: BoxDecoration(      
+      260 -                                color: Theme.of(context).color
+          -Scheme.secondaryContainer,                                    
+      261 -                                borderRadius: BorderRadius.cir
+          -cular(8),                                                     
+      262 -                              ),                              
+      263 -                              child: Row(children: [          
+      264 -                                Expanded(child: Column(crossAx
+          -isAlignment: CrossAxisAlignment.start, children: [            
+      265 -                                  Text(                       
+      266 -                                    [if (_selectedDish != null
+          -) _selectedDish!.name, if (_selectedStaple != null) _selectedS
+          -taple!.name].join(' + '),                                     
+      267 -                                    style: const TextStyle(fon
+          -tWeight: FontWeight.bold, fontSize: 13),                      
+      268 -                                  ),                          
+      269 -                                  Text('合计 ${_combinedCalori
+          -es.toStringAsFixed(0)} kcal',                                 
+      270 -                                      style: TextStyle(color: 
+          -Theme.of(context).colorScheme.primary)),                      
+      271 -                                ])),                          
+      272 -                                if (_selectedDish != null && _
+          -selectedStaple != null)                                       
+      273 -                                  ElevatedButton(onPressed: _c
+          -onfirmAndLog, child: const Text('记录')),                     
+      274 -                              ]),                             
+      275 -                            ),                                
+      276 -                                                              
+      277 -                          // 两栏                             
+      295                            Row(crossAxisAlignment: CrossAxisAli
+           gnment.start, children: [
+      296                              // 菜肴
+      297                              Expanded(child: Column(crossAxisAl
+           ignment: CrossAxisAlignment.start, children: [
+     ...
+      302                                ..._dishes.map((r) => _recipeCar
+           d(r, _selectedDish?.name == r.name,
+      303                                    () => setState(() => _select
+           edDish = _selectedDish?.name == r.name ? null : r))),
+      304                              ])),
+      288 -                            const SizedBox(width: 8),         
+      289 -                            // 主食                           
+      290 -                            Expanded(child: Column(crossAxisAl
+          -ignment: CrossAxisAlignment.start, children: [                
+      291 -                              const Padding(                  
+      292 -                                padding: EdgeInsets.only(botto
+          -m: 4),                                                        
+      293 -                                child: Text('主食', style: Tex
+          -tStyle(fontWeight: FontWeight.bold, fontSize: 14)),           
+      294 -                              ),                              
+      295 -                              ..._staples.map((r) => _recipeCa
+          -rd(r, _selectedStaple?.name == r.name,                        
+      296 -                                  () => setState(() => _select
+          -edStaple = _selectedStaple?.name == r.name ? null : r))),     
+      297 -                            ])),                              
+      305 +                            if (_staples.isNotEmpty) ...[     
+      306 +                              const SizedBox(width: 8),       
+      307 +                              // 主食                         
+      308 +                              Expanded(child: Column(crossAxis
+          +Alignment: CrossAxisAlignment.start, children: [              
+      309 +                                const Padding(                
+      310 +                                  padding: EdgeInsets.only(bot
+          +tom: 4),                                                      
+      311 +                                  child: Text('主食', style: T
+          +extStyle(fontWeight: FontWeight.bold, fontSize: 14)),         
+      312 +                                ),                            
+      313 +                                ..._staples.map((r) => _recipe
+          +Card(r, _selectedStaple?.name == r.name,                      
+      314 +                                    () => setState(() => _sele
+          +ctedStaple = _selectedStaple?.name == r.name ? null : r))),   
+      315 +                              ])),                            
+      316 +                            ],                                
+      317                            ]),
+      318                          ] else ...[
+      300 -                          // 旧格式兼容                       
+      319                            ..._legacyRecipes.map((r) => Card(
+      320                              color: _selectedLegacy?.name == r.
+           name ? Theme.of(context).colorScheme.primaryContainer : null,
+      321                              child: ListTile(
+     ...
+      330                            )),
+      331                          ],
+      332  
+      333 +                        // 组合热量                           
+      334 +                        if (_selectedDish != null && _selected
+          +Staple != null) ...[                                          
+      335 +                          const SizedBox(height: 8),          
+      336 +                          Card(                               
+      337 +                            color: Colors.blue.shade50,       
+      338 +                            child: Padding(                   
+      339 +                              padding: const EdgeInsets.all(12
+          +),                                                            
+      340 +                              child: Row(                     
+      341 +                                mainAxisAlignment: MainAxisAli
+          +gnment.spaceBetween,                                          
+      342 +                                children: [                   
+      343 +                                  const Text('组合热量', style
+          +: TextStyle(fontWeight: FontWeight.bold)),                    
+      344 +                                  Text('${_combinedCalories.to
+          +StringAsFixed(0)} kcal',                                      
+      345 +                                      style: const TextStyle(f
+          +ontSize: 16, fontWeight: FontWeight.bold, color: Colors.blue))
+          +,                                                             
+      346 +                                  ElevatedButton(onPressed: _c
+          +onfirmAndLog, child: const Text('记录这餐')),                 
+      347 +                                ],                            
+      348 +                              ),                              
+      349 +                            ),                                
+      350 +                          ),                                  
+      351 +                        ],                                    
+      352 +                                                              
+      353                          const SizedBox(height: 8),
+      354                          const Divider(),
+      355  
+     ...
+      363                              TextField(
+      364                                controller: _feedbackCtrl,
+      365                                decoration: const InputDecoratio
+           n(
+      328 -                                hintText: '告诉我您的想法，比 
+          -如缺少某种食材、不喜欢某个搭配...',                           
+      366 +                                hintText: '告诉我您的想法，比 
+          +如想吃牛肉、不喜欢某个搭配...',                               
+      367                                  border: OutlineInputBorder(),
+      368                                  isDense: true,
+      369                                ),
+     ...
+      412                              ]),
+      413                            ),
+      414                          ],
+      377 -                      ],                                      
+      415 +                      ]),                                     
+      416                      ),
+      417          ),
+      418        ]),
+
+  Read 1 file (ctrl+o to expand)
+
+● Good, menu_screen.dart looks complete with cache. Now rewrite chat_screen.dart
+   with multi-session history:
+
+● Write(frontend\dietary_app\lib\screens\chat_screen.dart)
+  ⎿  Added 270 lines, removed 52 lines
+      1 +import 'dart:convert';                                          
+      2  import 'package:flutter/material.dart';
+      3 +import 'package:shared_preferences/shared_preferences.dart';    
+      4  import '../services/api_service.dart';
+      5  import '../config/api_config.dart';
+      6  
+     ...
+       8    final String text;
+       9    final bool isUser;
+      10    ChatMessage({required this.text, required this.isUser});
+      11 +                                                               
+      12 +  Map<String, dynamic> toJson() => {'text': text, 'isUser': isU
+         +ser};                                                          
+      13 +  factory ChatMessage.fromJson(Map<String, dynamic> j) =>      
+      14 +      ChatMessage(text: j['text'] as String, isUser: j['isUser'
+         +] as bool);                                                    
+      15  }
+      16  
+      17 +class ChatSession {                                            
+      18 +  String id;                                                   
+      19 +  String name;                                                 
+      20 +  List<ChatMessage> messages;                                  
+      21 +  DateTime updatedAt;                                          
+      22 +                                                               
+      23 +  ChatSession({required this.id, required this.name, required t
+         +his.messages, required this.updatedAt});                       
+      24 +                                                               
+      25 +  Map<String, dynamic> toJson() => {                           
+      26 +    'id': id,                                                  
+      27 +    'name': name,                                              
+      28 +    'messages': messages.map((m) => m.toJson()).toList(),      
+      29 +    'updatedAt': updatedAt.toIso8601String(),                  
+      30 +  };                                                           
+      31 +                                                               
+      32 +  factory ChatSession.fromJson(Map<String, dynamic> j) => ChatS
+         +ession(                                                        
+      33 +    id: j['id'] as String,                                     
+      34 +    name: j['name'] as String,                                 
+      35 +    messages: (j['messages'] as List).map((m) => ChatMessage.fr
+         +omJson(Map<String, dynamic>.from(m))).toList(),                
+      36 +    updatedAt: DateTime.parse(j['updatedAt'] as String),       
+      37 +  );                                                           
+      38 +                                                               
+      39 +  static ChatSession newSession() => ChatSession(              
+      40 +    id: DateTime.now().millisecondsSinceEpoch.toString(),      
+      41 +    name: '新会话',                                            
+      42 +    messages: [ChatMessage(text: '您好！我是您的私人饮食管家。 
+         +您可以问我关于饮食、营养、食材搭配的任何问题。', isUser: false)
+         +],                                                             
+      43 +    updatedAt: DateTime.now(),                                 
+      44 +  );                                                           
+      45 +}                                                              
+      46 +                                                               
+      47  class ChatScreen extends StatefulWidget {
+      48    const ChatScreen({super.key});
+      49  
+     ...
+       54  class _ChatScreenState extends State<ChatScreen> {
+       55    final _inputCtrl = TextEditingController();
+       56    final _scrollCtrl = ScrollController();
+       21 -  final List<ChatMessage> _messages = [                       
+       22 -    ChatMessage(text: '您好！我是您的私人饮食管家。您可以问我 
+          -关于饮食、营养、食材搭配的任何问题，或者告诉我您的饮食感受，我
+          -会帮您调整饮食计划。', isUser: false),                        
+       23 -  ];                                                          
+       57    bool _sending = false;
+       58  
+       59 +  List<ChatSession> _sessions = [];                           
+       60 +  late ChatSession _current;                                  
+       61 +  bool _showHistory = false;                                  
+       62 +                                                              
+       63 +  static const _storageKey = 'chat_sessions';                 
+       64 +                                                              
+       65 +  @override                                                   
+       66 +  void initState() {                                          
+       67 +    super.initState();                                        
+       68 +    _loadSessions();                                          
+       69 +  }                                                           
+       70 +                                                              
+       71 +  Future<void> _loadSessions() async {                        
+       72 +    try {                                                     
+       73 +      final prefs = await SharedPreferences.getInstance();    
+       74 +      final raw = prefs.getString(_storageKey);               
+       75 +      if (raw != null) {                                      
+       76 +        final list = (jsonDecode(raw) as List)                
+       77 +            .map((e) => ChatSession.fromJson(Map<String, dynam
+          +ic>.from(e)))                                                 
+       78 +            .toList();                                        
+       79 +        list.sort((a, b) => b.updatedAt.compareTo(a.updatedAt)
+          +);                                                            
+       80 +        setState(() {                                         
+       81 +          _sessions = list;                                   
+       82 +          _current = list.isNotEmpty ? list.first : ChatSessio
+          +n.newSession();                                               
+       83 +          if (list.isEmpty) _sessions.add(_current);          
+       84 +        });                                                   
+       85 +      } else {                                                
+       86 +        final s = ChatSession.newSession();                   
+       87 +        setState(() { _sessions = [s]; _current = s; });      
+       88 +      }                                                       
+       89 +    } catch (_) {                                             
+       90 +      final s = ChatSession.newSession();                     
+       91 +      setState(() { _sessions = [s]; _current = s; });        
+       92 +    }                                                         
+       93 +  }                                                           
+       94 +                                                              
+       95 +  Future<void> _saveSessions() async {                        
+       96 +    try {                                                     
+       97 +      final prefs = await SharedPreferences.getInstance();    
+       98 +      await prefs.setString(_storageKey, jsonEncode(_sessions.
+          +map((s) => s.toJson()).toList()));                            
+       99 +    } catch (_) {}                                            
+      100 +  }                                                           
+      101 +                                                              
+      102 +  void _newSession() {                                        
+      103 +    final s = ChatSession.newSession();                       
+      104 +    setState(() {                                             
+      105 +      _sessions.insert(0, s);                                 
+      106 +      _current = s;                                           
+      107 +      _showHistory = false;                                   
+      108 +    });                                                       
+      109 +    _saveSessions();                                          
+      110 +  }                                                           
+      111 +                                                              
+      112 +  void _switchSession(ChatSession s) {                        
+      113 +    setState(() { _current = s; _showHistory = false; });     
+      114 +    WidgetsBinding.instance.addPostFrameCallback((_) => _scrol
+          +lToBottom());                                                 
+      115 +  }                                                           
+      116 +                                                              
+      117 +  void _deleteSession(ChatSession s) {                        
+      118 +    setState(() {                                             
+      119 +      _sessions.remove(s);                                    
+      120 +      if (_sessions.isEmpty) {                                
+      121 +        final ns = ChatSession.newSession();                  
+      122 +        _sessions.add(ns);                                    
+      123 +        _current = ns;                                        
+      124 +      } else if (_current.id == s.id) {                       
+      125 +        _current = _sessions.first;                           
+      126 +      }                                                       
+      127 +    });                                                       
+      128 +    _saveSessions();                                          
+      129 +  }                                                           
+      130 +                                                              
+      131 +  Future<void> _renameSession(ChatSession s) async {          
+      132 +    final ctrl = TextEditingController(text: s.name);         
+      133 +    final result = await showDialog<String>(                  
+      134 +      context: context,                                       
+      135 +      builder: (_) => AlertDialog(                            
+      136 +        title: const Text('重命名会话'),                      
+      137 +        content: TextField(controller: ctrl, autofocus: true, 
+          +decoration: const InputDecoration(isDense: true)),            
+      138 +        actions: [                                            
+      139 +          TextButton(onPressed: () => Navigator.pop(context), 
+          +child: const Text('取消')),                                   
+      140 +          ElevatedButton(onPressed: () => Navigator.pop(contex
+          +t, ctrl.text.trim()), child: const Text('确定')),             
+      141 +        ],                                                    
+      142 +      ),                                                      
+      143 +    );                                                        
+      144 +    if (result != null && result.isNotEmpty) {                
+      145 +      setState(() => s.name = result);                        
+      146 +      _saveSessions();                                        
+      147 +    }                                                         
+      148 +  }                                                           
+      149 +                                                              
+      150    Future<void> _send() async {
+      151      final text = _inputCtrl.text.trim();
+      152      if (text.isEmpty || _sending) return;
+      153  
+      154 +    // 自动命名：第一条用户消息作为会话名                     
+      155 +    if (_current.messages.length == 1 && _current.name == '新 
+          +会话') {                                                      
+      156 +      setState(() => _current.name = text.length > 15 ? '${tex
+          +t.substring(0, 15)}…' : text);                                
+      157 +    }                                                         
+      158 +                                                              
+      159      setState(() {
+       31 -      _messages.add(ChatMessage(text: text, isUser: true));   
+      160 +      _current.messages.add(ChatMessage(text: text, isUser: tr
+          +ue));                                                         
+      161 +      _current.updatedAt = DateTime.now();                    
+      162        _sending = true;
+      163      });
+      164      _inputCtrl.clear();
+     ...
+      168        final apiKey = await ApiConfig.getApiKey();
+      169        final aiBaseUrl = await ApiConfig.getAiBaseUrl();
+      170  
+      171 +      final history = _current.messages                       
+      172 +          .where((m) => m.text != text || !m.isUser)          
+      173 +          .take(_current.messages.length - 1)                 
+      174 +          .map((m) => {'role': m.isUser ? 'user' : 'assistant'
+          +, 'content': m.text})                                         
+      175 +          .toList();                                          
+      176 +                                                              
+      177        final data = await ApiService.post('/ai/chat', {
+      178          'message': text,
+       43 -        'history': _messages                                  
+       44 -            .where((m) => !m.isUser || m.text != text)        
+       45 -            .take(_messages.length - 1)                       
+       46 -            .map((m) => {'role': m.isUser ? 'user' : 'assistan
+          -t', 'content': m.text})                                       
+       47 -            .toList(),                                        
+      179 +        'history': history,                                   
+      180          if (apiKey != null && apiKey.isNotEmpty) 'api_key': ap
+           iKey,
+      181          if (aiBaseUrl != null && aiBaseUrl.isNotEmpty) 'ai_bas
+           e_url': aiBaseUrl,
+      182        });
+      183  
+      184        setState(() {
+       53 -        _messages.add(ChatMessage(text: data['reply'] ?? '抱歉
+          -，我暂时无法回答。', isUser: false));                         
+      185 +        _current.messages.add(ChatMessage(text: data['reply'] 
+          +?? '抱歉，我暂时无法回答。', isUser: false));                 
+      186 +        _current.updatedAt = DateTime.now();                  
+      187          _sending = false;
+      188        });
+      189 +      await _saveSessions();                                  
+      190      } catch (e) {
+      191        setState(() {
+       58 -        _messages.add(ChatMessage(text: '出错了：$e', isUser: 
+          -false));                                                      
+      192 +        _current.messages.add(ChatMessage(text: '出错了：$e', 
+          +isUser: false));                                              
+      193          _sending = false;
+      194        });
+      195      }
+     ...
+      211    @override
+      212    Widget build(BuildContext context) {
+      213      return Scaffold(
+       80 -      appBar: AppBar(title: const Text('饮食管家'), centerTitl
+          -e: true),                                                     
+       81 -      body: Column(children: [                                
+       82 -        Expanded(                                             
+       83 -          child: ListView.builder(                            
+       84 -            controller: _scrollCtrl,                          
+       85 -            padding: const EdgeInsets.all(12),                
+       86 -            itemCount: _messages.length,                      
+       87 -            itemBuilder: (_, i) => _Bubble(msg: _messages[i]),
+       88 -          ),                                                  
+      214 +      appBar: AppBar(                                         
+      215 +        title: GestureDetector(                               
+      216 +          onTap: () => _renameSession(_current),              
+      217 +          child: Row(mainAxisSize: MainAxisSize.min, children:
+          + [                                                            
+      218 +            Flexible(child: Text(_current.name, overflow: Text
+          +Overflow.ellipsis)),                                          
+      219 +            const SizedBox(width: 4),                         
+      220 +            const Icon(Icons.edit, size: 14),                 
+      221 +          ]),                                                 
+      222          ),
+       90 -        if (_sending)                                         
+       91 -          const Padding(                                      
+       92 -            padding: EdgeInsets.symmetric(horizontal: 16, vert
+          -ical: 4),                                                     
+       93 -            child: Row(children: [                            
+       94 -              SizedBox(width: 16, height: 16, child: CircularP
+          -rogressIndicator(strokeWidth: 2)),                            
+       95 -              SizedBox(width: 8),                             
+       96 -              Text('管家正在思考...', style: TextStyle(color: 
+          -Colors.grey, fontSize: 13)),                                  
+       97 -            ]),                                               
+      223 +        centerTitle: true,                                    
+      224 +        leading: IconButton(                                  
+      225 +          icon: const Icon(Icons.history),                    
+      226 +          tooltip: '历史会话',                                
+      227 +          onPressed: () => setState(() => _showHistory = !_sho
+          +wHistory),                                                    
+      228 +        ),                                                    
+      229 +        actions: [                                            
+      230 +          IconButton(                                         
+      231 +            icon: const Icon(Icons.add_comment_outlined),     
+      232 +            tooltip: '新会话',                                
+      233 +            onPressed: _newSession,                           
+      234            ),
+       99 -        const Divider(height: 1),                             
+      100 -        Padding(                                              
+      101 -          padding: const EdgeInsets.fromLTRB(12, 8, 8, 12),   
+      102 -          child: Row(children: [                              
+      103 -            Expanded(                                         
+      104 -              child: TextField(                               
+      105 -                controller: _inputCtrl,                       
+      106 -                decoration: const InputDecoration(            
+      107 -                  hintText: '问我任何饮食问题...',            
+      108 -                  border: OutlineInputBorder(),               
+      109 -                  contentPadding: EdgeInsets.symmetric(horizon
+          -tal: 12, vertical: 10),                                       
+      110 -                ),                                            
+      111 -                maxLines: null,                               
+      112 -                textInputAction: TextInputAction.send,        
+      113 -                onSubmitted: (_) => _send(),                  
+      235 +        ],                                                    
+      236 +      ),                                                      
+      237 +      body: _showHistory ? _buildHistoryPanel() : _buildChat()
+          +,                                                             
+      238 +    );                                                        
+      239 +  }                                                           
+      240 +                                                              
+      241 +  Widget _buildHistoryPanel() {                               
+      242 +    final sorted = [..._sessions]..sort((a, b) => b.updatedAt.
+          +compareTo(a.updatedAt));                                      
+      243 +    return Column(children: [                                 
+      244 +      Padding(                                                
+      245 +        padding: const EdgeInsets.all(12),                    
+      246 +        child: Row(children: [                                
+      247 +          const Text('历史会话', style: TextStyle(fontWeight: 
+          +FontWeight.bold, fontSize: 16)),                              
+      248 +          const Spacer(),                                     
+      249 +          TextButton.icon(                                    
+      250 +            icon: const Icon(Icons.add, size: 16),            
+      251 +            label: const Text('新会话'),                      
+      252 +            onPressed: _newSession,                           
+      253 +          ),                                                  
+      254 +        ]),                                                   
+      255 +      ),                                                      
+      256 +      const Divider(height: 1),                               
+      257 +      Expanded(                                               
+      258 +        child: ListView.builder(                              
+      259 +          itemCount: sorted.length,                           
+      260 +          itemBuilder: (_, i) {                               
+      261 +            final s = sorted[i];                              
+      262 +            final isActive = s.id == _current.id;             
+      263 +            return ListTile(                                  
+      264 +              selected: isActive,                             
+      265 +              leading: const Icon(Icons.chat_bubble_outline), 
+      266 +              title: Text(s.name, maxLines: 1, overflow: TextO
+          +verflow.ellipsis),                                            
+      267 +              subtitle: Text(                                 
+      268 +                '${s.messages.length - 1}条消息 · ${_formatDat
+          +e(s.updatedAt)}',                                             
+      269 +                style: const TextStyle(fontSize: 11),         
+      270                ),
+      115 -            ),                                                
+      116 -            const SizedBox(width: 8),                         
+      117 -            IconButton(                                       
+      118 -              icon: const Icon(Icons.send),                   
+      119 -              color: Theme.of(context).colorScheme.primary,   
+      120 -              onPressed: _sending ? null : _send,             
+      121 -            ),                                                
+      271 +              trailing: PopupMenuButton<String>(              
+      272 +                onSelected: (v) {                             
+      273 +                  if (v == 'rename') _renameSession(s);       
+      274 +                  if (v == 'delete') _deleteSession(s);       
+      275 +                },                                            
+      276 +                itemBuilder: (_) => [                         
+      277 +                  const PopupMenuItem(value: 'rename', child: 
+          +Text('重命名')),                                              
+      278 +                  const PopupMenuItem(value: 'delete', child: 
+          +Text('删除')),                                                
+      279 +                ],                                            
+      280 +              ),                                              
+      281 +              onTap: () => _switchSession(s),                 
+      282 +            );                                                
+      283 +          },                                                  
+      284 +        ),                                                    
+      285 +      ),                                                      
+      286 +    ]);                                                       
+      287 +  }                                                           
+      288 +                                                              
+      289 +  String _formatDate(DateTime dt) {                           
+      290 +    final now = DateTime.now();                               
+      291 +    final diff = now.difference(dt);                          
+      292 +    if (diff.inMinutes < 1) return '刚刚';                    
+      293 +    if (diff.inHours < 1) return '${diff.inMinutes}分钟前';   
+      294 +    if (diff.inDays < 1) return '${diff.inHours}小时前';      
+      295 +    if (diff.inDays < 7) return '${diff.inDays}天前';         
+      296 +    return '${dt.month}/${dt.day}';                           
+      297 +  }                                                           
+      298 +                                                              
+      299 +  Widget _buildChat() {                                       
+      300 +    return Column(children: [                                 
+      301 +      Expanded(                                               
+      302 +        child: ListView.builder(                              
+      303 +          controller: _scrollCtrl,                            
+      304 +          padding: const EdgeInsets.all(12),                  
+      305 +          itemCount: _current.messages.length,                
+      306 +          itemBuilder: (_, i) => _Bubble(msg: _current.message
+          +s[i]),                                                        
+      307 +        ),                                                    
+      308 +      ),                                                      
+      309 +      if (_sending)                                           
+      310 +        const Padding(                                        
+      311 +          padding: EdgeInsets.symmetric(horizontal: 16, vertic
+          +al: 4),                                                       
+      312 +          child: Row(children: [                              
+      313 +            SizedBox(width: 16, height: 16, child: CircularPro
+          +gressIndicator(strokeWidth: 2)),                              
+      314 +            SizedBox(width: 8),                               
+      315 +            Text('管家正在思考...', style: TextStyle(color: Co
+          +lors.grey, fontSize: 13)),                                    
+      316            ]),
+      317          ),
+      124 -      ]),                                                     
+      125 -    );                                                        
+      318 +      const Divider(height: 1),                               
+      319 +      Padding(                                                
+      320 +        padding: const EdgeInsets.fromLTRB(12, 8, 8, 12),     
+      321 +        child: Row(children: [                                
+      322 +          Expanded(                                           
+      323 +            child: TextField(                                 
+      324 +              controller: _inputCtrl,                         
+      325 +              decoration: const InputDecoration(              
+      326 +                hintText: '问我任何饮食问题...',              
+      327 +                border: OutlineInputBorder(),                 
+      328 +                contentPadding: EdgeInsets.symmetric(horizonta
+          +l: 12, vertical: 10),                                         
+      329 +              ),                                              
+      330 +              maxLines: null,                                 
+      331 +              textInputAction: TextInputAction.send,          
+      332 +              onSubmitted: (_) => _send(),                    
+      333 +            ),                                                
+      334 +          ),                                                  
+      335 +          const SizedBox(width: 8),                           
+      336 +          IconButton(                                         
+      337 +            icon: const Icon(Icons.send),                     
+      338 +            color: Theme.of(context).colorScheme.primary,     
+      339 +            onPressed: _sending ? null : _send,               
+      340 +          ),                                                  
+      341 +        ]),                                                   
+      342 +      ),                                                      
+      343 +    ]);                                                       
+      344    }
+      345  }
+      346  
+
+  Read 1 file (ctrl+o to expand)
+
+● .
+
+  Read 1 file (ctrl+o to expand)
+
+● chat_screen.dart looks complete. Now update the memory and mark task done:
+
+  Recalled 1 memory, wrote 1 memory (ctrl+o to expand)
+
+● 全部完成。现在回答你关于通义万象的问题：
+
+  需要 API Key，申请方式：
+
+  1. 去 https://dashscope.console.aliyun.com/ 注册/登录
+  2. 开通"灵积模型服务"
+  3. 在"API-KEY管理"页面创建一个 Key
+  4. 把这个 Key 填到 app 设置页的 Image API Key 字段
+
+  价格约 0.04元/张（wanx2.1-t2i-turbo），新用户有免费额度。这个 Key 和 Anthropic
+   的 Key 完全独立，只用于步骤图片生成。
+
+  ---
+  本次所有改动总结：
+
+  - 推荐逻辑：用户说"想吃牛肉"会推荐4-6道牛肉菜，不再固定3菜3主食
+  - 多样性：prompt 明确要求避免重复推荐常见菜
+  - 冰箱食材：后端一直有读取（recipes.py:39），已确认
+  - 菜单缓存：推荐结果保存24小时，切换页面不丢失
+  - 多会话：管家页支持新建/切换/重命名/删除会话，全部持久化
+  - Qwen 图片：generate_image_qwen() 已实现，填入 Image API Key
+  后步骤详情页会自动生成图片
+
+  运行前记得 flutter pub get 更新依赖。
+
+✻ Crunched for 15m 20s
+
+> generate_image_qwen()逻辑是什么？我填入了qwen的API KEY和base                  
+URL,是在阿里云百炼https://bailian.console.aliyun.com/cn-beijing/?tab=model#/api 
+-key这个平台申请的，但是我怎么知道它会使用哪个模型呢？是代码里写死的吗？而且我  
+现在填入了，但是生成步骤的时候没有生成图片，这是生成图片的要求：生成的是每个步  
+骤的“半成品图”和过程图（如有）。“半成品图”让用户知道“这一步做到什么样子就算成功 
+了”，比如“醒面”的步骤，就应该展示“醒好的面团”是什么样子的；切鱼，就应该展示“切  
+完的鱼是什么样子”；“过程图”让用户详细的知道这一步该怎么做，比如调制料汁，就要展 
+示比如5g醋大概是什么样子，让用户直观的看到每种东西应该放多少                    
+
+  Read 2 files (ctrl+o to expand)
+
+● 现在我清楚了整个流程，来解答你的问题并修复问题：
+
+  关于 generate_image_qwen() 逻辑：
+  1. 模型是代码里写死的 wanx2.1-t2i-turbo（可以改）
+  2. 流程：提交异步任务 → 轮询15次（每次等2秒，最多30秒）→ 返回图片URL
+  3. base_url 默认 https://dashscope.aliyuncs.com，百炼平台的 base URL
+  应该也是这个
+
+  图片没生成的原因： 有两个问题需要修复：
+  1. prompt 质量差 — 现在 Claude 生成的是20词以内的英文
+  prompt，太简单，需要更具体描述食物状态
+  2. 百炼平台的 API 路径可能和 DashScope 不同，需要加调试日志
+
+  先改 generate_recipe_detail 的 prompt，让 Claude 生成更好的图片描述：
+
+● Update(backend\services\ai_service.py)
+  ⎿  Added 11 lines, removed 6 lines
+      106  步骤列表：
+      107  {chr(10).join(f'{i+1}. {s}' for i, s in enumerate(steps))}
+      108  
+      109 -对每个步骤，请返回：                                          
+      110 -- step: 原始步骤文字                                          
+      111 -- result_description: 半成品描述（这一步完成后食材/菜肴应该是 
+          -什么样子，帮助用户判断是否做对了）                            
+      112 -- result_image_prompt: 半成品图片的英文生成prompt（用于AI图片 
+          -生成，描述食物外观，20词以内）                                
+      113 -- process_description: 过程说明（如涉及具体用量/手法，详细说明
+          -；否则返回空字符串）                                          
+      114 -- process_image_prompt: 过程图片的英文prompt（如有具体操作需要
+          -展示则填写，否则返回空字符串）                                
+      109 +对每个步骤，请返回以下字段：                                  
+      110  
+      111 +- step: 原始步骤文字（原样复制）                              
+      112 +                                                              
+      113 +- result_description: 半成品描述（中文，2-3句话）。描述这一步 
+          +完成后，食材/菜肴应该呈现的具体状态，帮助用户判断是否做对了。 
+          +例如：醒面后面团应光滑有弹性、不粘手；切鱼后鱼片应厚薄均匀约0.
+          +5cm、边缘整齐。                                               
+      114 +                                                              
+      115 +- result_image_prompt: 半成品图片的英文prompt（30-50词）。要具
+          +体描述完成状态的视觉外观，包括颜色、形状、质地、摆放方式。例如
+          +切好的鱼片要描述"thinly sliced fish fillets, uniform 5mm thick
+          +ness, arranged on white cutting board, glistening fresh surfac
+          +e, clean cuts"。                                              
+      116 +                                                              
+      117 +- process_description: 过程说明（中文）。仅当步骤涉及具体用量 
+          +或关键手法时填写，例如"5g醋大约是瓷勺半勺"、"油温七成热时筷子 
+          +插入会冒小泡"。无需展示时返回空字符串。                       
+      118 +                                                              
+      119 +- process_image_prompt: 过程图片的英文prompt（30-50词）。仅当p
+          +rocess_description非空时填写，要直观展示用量或操作，例如"half 
+          +teaspoon of rice vinegar in small ceramic spoon, close-up shot
+          +, kitchen background"。无需展示时返回空字符串。               
+      120 +                                                              
+      121  以JSON数组格式返回，只返回JSON，不要其他文字。"""
+      122  
+      123      data = _post(api_key, base_url or DEFAULT_AI_BASE_URL, {
+
+● 现在修复 generate_image_qwen — 加调试日志，并修正百炼平台的 API 路径（百炼和
+  DashScope 路径一致，但要确认 base_url 传入正确）：
+
+● Update(backend\services\ai_service.py)
+  ⎿  Added 16 lines, removed 9 lines
+      279      image_base_url: str = None,
+      280  ) -> str | None:
+      281      """调用通义万象 wanx2.1-t2i-turbo 生成图片，返回图片URL或N
+           one"""
+      282 +    import time                                               
+      283      base = (image_base_url or "https://dashscope.aliyuncs.com"
+           ).rstrip("/")
+      283 -    # 提交任务                                                
+      284      submit_url = f"{base}/api/v1/services/aigc/text2image/imag
+           e-synthesis"
+      285      headers = {
+      286          "Authorization": f"Bearer {image_api_key}",
+     ...
+      292          "input": {"prompt": prompt},
+      293          "parameters": {"size": "512*512", "n": 1},
+      294      }
+      295 +    print(f"[IMG] submitting to {submit_url}, prompt={prompt[:
+          +60]}")                                                        
+      296      r = httpx.post(submit_url, headers=headers, json=payload, 
+           timeout=30)
+      297 +    print(f"[IMG] submit status={r.status_code}, body={r.text[
+          +:300]}")                                                      
+      298      r.raise_for_status()
+      297 -    task_id = r.json()["output"]["task_id"]                   
+      299 +    resp_json = r.json()                                      
+      300 +    task_id = resp_json.get("output", {}).get("task_id")      
+      301 +    if not task_id:                                           
+      302 +        print(f"[IMG] no task_id in response: {resp_json}")   
+      303 +        return None                                           
+      304  
+      299 -    # 轮询结果（最多30秒）                                    
+      305      query_url = f"{base}/api/v1/tasks/{task_id}"
+      306      query_headers = {"Authorization": f"Bearer {image_api_key}
+           "}
+      302 -    import time                                               
+      303 -    for _ in range(15):                                       
+      304 -        time.sleep(2)                                         
+      307 +    for i in range(20):                                       
+      308 +        time.sleep(3)                                         
+      309          qr = httpx.get(query_url, headers=query_headers, timeo
+           ut=15)
+      310          qr.raise_for_status()
+      311          output = qr.json().get("output", {})
+      312          status = output.get("task_status", "")
+      313 +        print(f"[IMG] poll {i+1}: status={status}")           
+      314          if status == "SUCCEEDED":
+      315              results = output.get("results", [])
+      311 -            if results:                                       
+      312 -                return results[0].get("url")                  
+      313 -            return None                                       
+      316 +            url = results[0].get("url") if results else None  
+      317 +            print(f"[IMG] succeeded, url={url}")              
+      318 +            return url                                        
+      319          if status in ("FAILED", "CANCELED"):
+      320 +            print(f"[IMG] failed: {output}")                  
+      321              return None
+      322 +    print("[IMG] timeout waiting for image")                  
+      323      return None
+      324  
+      325  
+
+● 好，现在重启后端，然后打开一个菜品详情页，看后端终端里的 [IMG]
+  日志，把输出贴给我。
+
+  几个需要确认的事：
+
+  1. 设置页的 Image Base URL 填的是什么？ 百炼平台的 base URL 应该填
+  https://dashscope.aliyuncs.com（不要加路径，只填域名）
+  2. Image API Key 是否正确保存了？ 可以在设置页重新输入一次保存
+  3. 看日志里 [IMG] submit status= 是什么，以及 body= 的内容 — 这样就能知道是
+  Key 错误、路径错误还是其他问题
+
+✻ Crunched for 2m 33s
+
+> 我填的是https://dashscope.aliyuncs.com/compatible-mode/v1                     
+
+  Read 1 file (ctrl+o to expand)
+
+● 问题找到了。你填的是 OpenAI
+  兼容模式的地址（/compatible-mode/v1），那是用来调用文本模型的。图片生成用的是
+  DashScope 原生 API，路径完全不同。
+
+  generate_image_qwen 里会把你填的 base URL 拼成：
+  https://dashscope.aliyuncs.com/compatible-mode/v1/api/v1/services/aigc/...
+  这个路径是错的。
+
+  修复方式：图片生成的 base URL 直接硬编码用
+  https://dashscope.aliyuncs.com，忽略用户填的
+  image_base_url（那个字段留给将来其他用途）：
+
+● Update(backend\services\ai_service.py)
+  ⎿  Added 2 lines, removed 1 line
+      280  ) -> str | None:
+      281      """调用通义万象 wanx2.1-t2i-turbo 生成图片，返回图片URL或N
+           one"""
+      282      import time
+      283 -    base = (image_base_url or "https://dashscope.aliyuncs.com"
+          -).rstrip("/")                                                 
+      283 +    # 图片生成必须用 DashScope 原生 API，不使用 compatible-mod
+          +e 地址                                                        
+      284 +    base = "https://dashscope.aliyuncs.com"                   
+      285      submit_url = f"{base}/api/v1/services/aigc/text2image/imag
+           e-synthesis"
+      286      headers = {
+      287          "Authorization": f"Bearer {image_api_key}",
+
+● 重启后端，再试一次打开菜品详情页，看 [IMG] 日志输出是什么。
+
+  另外确认一下：设置页的 Image API Key 填的是百炼平台的 API Key（sk-xxx
+  格式），不是 Anthropic 的 Key。两个 Key 是分开的字段。
+
+> 图片好像生成失败了，显示HTTP request failed.statuCode:0,https://dashcope-resu 
+lt-wlcb-acdr-1.oss-cn-wulanchabu...还有好长一串                                 
+
+  Read 1 file (ctrl+o to expand)
+
+● 图片生成本身成功了（后端拿到了 OSS URL），问题是 Flutter Web 在 Chrome
+  里加载这个 URL 失败了 — statusCode: 0 是典型的 CORS 跨域错误。
+
+  阿里云 OSS 生成的图片 URL 没有设置 CORS 头，Chrome 直接请求会被拦截。
+
+  解决方案：后端做图片代理，前端请求后端的代理接口，后端去取图片再返回给前端。
+
+  后端加代理路由：
+
+  Read 1 file (ctrl+o to expand)
+
+● Update(backend\routers\ai.py)  ⎿  Added 15 lines, removed 1 line
+      1 -from fastapi import APIRouter, Depends, UploadFile, File, Header
+        -, HTTPException                                                 
+      1 +from fastapi import APIRouter, Depends, UploadFile, File, Header
+        +, HTTPException, Query                                          
+      2 +from fastapi.responses import Response                          
+      3  from sqlalchemy.orm import Session
+      4  from datetime import date, timedelta
+      5  from typing import List, Optional
+     ...
+       7  from backend.database import get_db
+       8  from backend.models import FeedbackSchema, Feedback, DietAdvice
+          Request, UserProfile, NutritionLog, Ingredient
+       9  from backend.services import ai_service
+      10 +import httpx                                                   
+      11  
+      12  router = APIRouter(prefix="/ai", tags=["ai"])
+      13  
+      14  
+      15 +@router.get("/image-proxy")                                    
+      16 +async def image_proxy(url: str = Query(...)):                  
+      17 +    """代理外部图片请求，解决 Flutter Web CORS 问题"""         
+      18 +    try:                                                       
+      19 +        async with httpx.AsyncClient(timeout=30) as client:    
+      20 +            r = await client.get(url)                          
+      21 +            r.raise_for_status()                               
+      22 +            return Response(content=r.content, media_type=r.hea
+         +ders.get("content-type", "image/png"))                         
+      23 +    except Exception as e:                                     
+      24 +        raise HTTPException(status_code=502, detail=f"图片获取 
+         +失败: {e}")                                                    
+      25 +                                                               
+      26 +                                                               
+      27  @router.post("/identify-ingredients")
+      28  async def identify_ingredients(
+      29      file: UploadFile = File(...),
+
+● 现在修改前端，把图片 URL 替换成走代理的地址：
+
+  Read 2 files (ctrl+o to expand)
+
+● 在 recipe_detail_screen.dart 里，把图片 URL 通过代理加载。找到两处
+  Image.network 改成走代理：
+
+● Update(frontend\dietary_app\lib\screens\recipe_detail_screen.dart)
+  ⎿  Added 1 line, removed 1 line
+      361                  padding: const EdgeInsets.only(top: 8),
+      362                  child: ClipRRect(
+      363                    borderRadius: BorderRadius.circular(8),
+      364 -                  child: Image.network(step.resultImageUrl!, h
+          -eight: 160, width: double.infinity, fit: BoxFit.cover),       
+      364 +                  child: _ProxiedImage(url: step.resultImageUr
+          +l!, height: 160),                                             
+      365                  ),
+      366                ),
+      367            ],
+
+● Update(frontend\dietary_app\lib\screens\recipe_detail_screen.dart)
+  ⎿  Added 1 line, removed 1 line
+      384                  padding: const EdgeInsets.only(top: 8),
+      385                  child: ClipRRect(
+      386                    borderRadius: BorderRadius.circular(8),
+      387 -                  child: Image.network(step.processImageUrl!, 
+          -height: 160, width: double.infinity, fit: BoxFit.cover),      
+      387 +                  child: _ProxiedImage(url: step.processImageU
+          +rl!, height: 160),                                            
+      388                  ),
+      389                ),
+      390            ],
+
+● 现在在文件末尾加上 _ProxiedImage widget：
+
+  Read 1 file (ctrl+o to expand)
+
+● Update(frontend\dietary_app\lib\screens\recipe_detail_screen.dart)
+  ⎿  Added 37 lines
+      393      );
+      394    }
+      395  }
+      396 +                                                              
+      397 +class _ProxiedImage extends StatefulWidget {                  
+      398 +  final String url;                                           
+      399 +  final double height;                                        
+      400 +  const _ProxiedImage({required this.url, required this.height
+          +});                                                           
+      401 +                                                              
+      402 +  @override                                                   
+      403 +  State<_ProxiedImage> createState() => _ProxiedImageState(); 
+      404 +}                                                             
+      405 +                                                              
+      406 +class _ProxiedImageState extends State<_ProxiedImage> {       
+      407 +  String? _proxyUrl;                                          
+      408 +                                                              
+      409 +  @override                                                   
+      410 +  void initState() {                                          
+      411 +    super.initState();                                        
+      412 +    _buildProxyUrl();                                         
+      413 +  }                                                           
+      414 +                                                              
+      415 +  Future<void> _buildProxyUrl() async {                       
+      416 +    final base = await ApiConfig.getBaseUrl();                
+      417 +    final encoded = Uri.encodeComponent(widget.url);          
+      418 +    setState(() => _proxyUrl = '$base/ai/image-proxy?url=$enco
+          +ded');                                                        
+      419 +  }                                                           
+      420 +                                                              
+      421 +  @override                                                   
+      422 +  Widget build(BuildContext context) {                        
+      423 +    if (_proxyUrl == null) return const SizedBox(height: 160, 
+          +child: Center(child: CircularProgressIndicator(strokeWidth: 2)
+          +));                                                           
+      424 +    return Image.network(                                     
+      425 +      _proxyUrl!,                                             
+      426 +      height: widget.height,                                  
+      427 +      width: double.infinity,                                 
+      428 +      fit: BoxFit.cover,                                      
+      429 +      errorBuilder: (_, __, ___) => const SizedBox(height: 80,
+          + child: Center(child: Icon(Icons.broken_image, color: Colors.g
+          +rey))),                                                       
+      430 +    );                                                        
+      431 +  }                                                           
+      432 +}                                                             
+
+● 重启后端，热重载前端（r），再打开菜品详情页应该就能看到图片了。
+
+  注意：每个步骤都要生成图片，每张约2-3秒，一道菜4-5个步骤的话详情页加载会需要10
+  -20秒，这是正常的。如果想加快速度，可以后续改成异步并发生成。
+
+✻ Worked for 2m 38s
+
+> OK，现在能生成图片了，但是前端显示的大小不太合适，调整一下让图片完整显示，我  
+觉得异步并发生成也很重要，能一起改了吗                                          
+
+  Read 1 file (ctrl+o to expand)
+
+● 两个改动一起做：
+
+  1. 图片改用 AspectRatio 完整显示，不裁剪
+  2. 后端并发生成所有图片
+
+● Update(frontend\dietary_app\lib\screens\recipe_detail_screen.dart)
+  ⎿  Added 10 lines, removed 9 lines
+      396  
+      397  class _ProxiedImage extends StatefulWidget {
+      398    final String url;
+      399 -  final double height;                                        
+      400 -  const _ProxiedImage({required this.url, required this.height
+          -});                                                           
+      399 +  const _ProxiedImage({required this.url});                   
+      400  
+      401    @override
+      402    State<_ProxiedImage> createState() => _ProxiedImageState();
+     ...
+      419  
+      420    @override
+      421    Widget build(BuildContext context) {
+      423 -    if (_proxyUrl == null) return const SizedBox(height: 160, 
+          -child: Center(child: CircularProgressIndicator(strokeWidth: 2)
+          -));                                                           
+      424 -    return Image.network(                                     
+      425 -      _proxyUrl!,                                             
+      426 -      height: widget.height,                                  
+      427 -      width: double.infinity,                                 
+      428 -      fit: BoxFit.cover,                                      
+      429 -      errorBuilder: (_, __, ___) => const SizedBox(height: 80,
+          - child: Center(child: Icon(Icons.broken_image, color: Colors.g
+          -rey))),                                                       
+      422 +    if (_proxyUrl == null) return const SizedBox(height: 40, c
+          +hild: Center(child: CircularProgressIndicator(strokeWidth: 2))
+          +);                                                            
+      423 +    return ClipRRect(                                         
+      424 +      borderRadius: BorderRadius.circular(8),                 
+      425 +      child: Image.network(                                   
+      426 +        _proxyUrl!,                                           
+      427 +        width: double.infinity,                               
+      428 +        fit: BoxFit.contain,                                  
+      429 +        errorBuilder: (_, __, ___) => const SizedBox(height: 6
+          +0, child: Center(child: Icon(Icons.broken_image, color: Colors
+          +.grey))),                                                     
+      430 +      ),                                                      
+      431      );
+      432    }
+      433  }
+
+● 现在更新两处 _ProxiedImage 调用，去掉 height 参数：
+
+● Update(frontend\dietary_app\lib\screens\recipe_detail_screen.dart)
+  ⎿  Added 1 line, removed 4 lines
+      359              if (step.resultImageUrl != null)
+      360                Padding(
+      361                  padding: const EdgeInsets.only(top: 8),
+      362 -                child: ClipRRect(                             
+      363 -                  borderRadius: BorderRadius.circular(8),     
+      364 -                  child: _ProxiedImage(url: step.resultImageUr
+          -l!, height: 160),                                             
+      365 -                ),                                            
+      362 +                child: _ProxiedImage(url: step.resultImageUrl!
+          +),                                                            
+      363                ),
+      364            ],
+      365            if (step.processDescription.isNotEmpty) ...[
+
+● .
+
+● Update(frontend\dietary_app\lib\screens\recipe_detail_screen.dart)
+  ⎿  Added 1 line, removed 4 lines
+      379              if (step.processImageUrl != null)
+      380                Padding(
+      381                  padding: const EdgeInsets.only(top: 8),
+      382 -                child: ClipRRect(                             
+      383 -                  borderRadius: BorderRadius.circular(8),     
+      384 -                  child: _ProxiedImage(url: step.processImageU
+          -rl!, height: 160),                                            
+      385 -                ),                                            
+      382 +                child: _ProxiedImage(url: step.processImageUrl
+          +!),                                                           
+      383                ),
+      384            ],
+      385          ]),
+
+● 现在改后端，并发生成所有图片：
+
+● Update(backend\services\ai_service.py)
+  ⎿  Added 13 lines, removed 11 lines
+      133              text = text[4:]
+      134      step_details = json.loads(text)
+      135  
+      136 -    for step in step_details:                                 
+      137 -        if image_api_key:                                     
+      136 +    if image_api_key:                                         
+      137 +        import asyncio                                        
+      138 +        import concurrent.futures                             
+      139 +                                                              
+      140 +        def _gen_step_images(step):                           
+      141              try:
+      139 -                if step.get("result_image_prompt"):           
+      140 -                    step["result_image_url"] = generate_image_
+          -qwen(image_api_key, step["result_image_prompt"], image_base_ur
+          -l)                                                            
+      141 -                else:                                         
+      142 -                    step["result_image_url"] = None           
+      143 -                if step.get("process_image_prompt"):          
+      144 -                    step["process_image_url"] = generate_image
+          -_qwen(image_api_key, step["process_image_prompt"], image_base_
+          -url)                                                          
+      145 -                else:                                         
+      146 -                    step["process_image_url"] = None          
+      142 +                step["result_image_url"] = generate_image_qwen
+          +(image_api_key, step["result_image_prompt"], image_base_url) i
+          +f step.get("result_image_prompt") else None                   
+      143 +                step["process_image_url"] = generate_image_qwe
+          +n(image_api_key, step["process_image_prompt"], image_base_url)
+          + if step.get("process_image_prompt") else None                
+      144              except Exception:
+      145                  step["result_image_url"] = None
+      146                  step["process_image_url"] = None
+      150 -        else:                                                 
+      147 +            return step                                       
+      148 +                                                              
+      149 +        with concurrent.futures.ThreadPoolExecutor(max_workers
+          +=6) as executor:                                              
+      150 +            step_details = list(executor.map(_gen_step_images,
+          + step_details))                                               
+      151 +    else:                                                     
+      152 +        for step in step_details:                             
+      153              step["result_image_url"] = None
+      154              step["process_image_url"] = None
+      155  
+
+● 重启后端，热重载前端。
+
+  并发后所有步骤的图片会同时生成，总时间从"步骤数×3秒"缩短到约3-5秒（取决于最慢
+  的那张）。
+
+✻ Brewed for 1m 40s
+
+> 为什么我刚刚测试的时候，有的步骤有图片，有的步骤没有                          
+
+● 有两个可能原因：
+
+  1. process_image_prompt 为空 — Claude 判断某些步骤不需要过程图，就返回空字符串
+  ，这是正常的（比如"出锅装盘"这种步骤确实没什么好展示的）
+  2. result_image_prompt 生成失败 — Qwen
+  偶尔会超时或失败，并发时某个任务没拿到结果就返回 None
+
+  先看后端日志，找到没图片的步骤对应的 [IMG] 输出是什么 — 是 timeout、FAILED
+  还是根本没有日志（说明 prompt 为空）？
+
+  另外可以加一个快速验证：
+
+  Read 1 file (ctrl+o to expand)
+
+● 加一行日志，把每个步骤的 prompt 情况打出来，方便排查：
+
+● Update(backend\services\ai_service.py)
+  ⎿  Added 7 lines, removed 3 lines
+      139  
+      140          def _gen_step_images(step):
+      141              try:
+      142 -                step["result_image_url"] = generate_image_qwen
+          -(image_api_key, step["result_image_prompt"], image_base_url) i
+          -f step.get("result_image_prompt") else None                   
+      143 -                step["process_image_url"] = generate_image_qwe
+          -n(image_api_key, step["process_image_prompt"], image_base_url)
+          - if step.get("process_image_prompt") else None                
+      144 -            except Exception:                                 
+      142 +                rp = step.get("result_image_prompt", "")      
+      143 +                pp = step.get("process_image_prompt", "")     
+      144 +                print(f"[IMG-STEP] step={step.get('step','')[:
+          +30]} result_prompt={bool(rp)} process_prompt={bool(pp)}")     
+      145 +                step["result_image_url"] = generate_image_qwen
+          +(image_api_key, rp, image_base_url) if rp else None           
+      146 +                step["process_image_url"] = generate_image_qwe
+          +n(image_api_key, pp, image_base_url) if pp else None          
+      147 +            except Exception as e:                            
+      148 +                print(f"[IMG-STEP] error: {e}")               
+      149                  step["result_image_url"] = None
+      150                  step["process_image_url"] = None
+      151              return step
+
+● 重启后端，再打开一个菜品详情页，把终端里 [IMG-STEP]
+  开头的日志贴给我，就能看出是哪个步骤没有 prompt、还是生成失败了。
+
+✻ Baked for 2m 7s
+
+> [IMG-STEP] step=西红柿切块，豆腐切小块 result_prompt=True process_prompt=True 
+[IMG] submitting to                                                             
+https://dashscope.aliyuncs.com/api/v1/services/aigc/text2image/image-synthesis, 
+ prompt=fresh tomato cut into 3cm irregular chunks with glistening r            
+[IMG-STEP] step=热锅下油，炒西红柿至出汁 result_prompt=True process_prompt=True 
+[IMG] submitting to                                                             
+https://dashscope.aliyuncs.com/api/v1/services/aigc/text2image/image-synthesis, 
+ prompt=stir-fried tomato chunks in wok, softened and collapsed, dee            
+[IMG-STEP] step=加入适量水烧开，下豆腐煮5分钟 result_prompt=True                
+process_prompt=True                                                             
+[IMG] submitting to                                                             
+https://dashscope.aliyuncs.com/api/v1/services/aigc/text2image/image-synthesis, 
+ prompt=clear orange-red tomato broth simmering in pot with soft whi            
+[IMG-STEP] step=加盐调味，撒葱花出锅 result_prompt=True process_prompt=True     
+[IMG] submitting to                                                             
+https://dashscope.aliyuncs.com/api/v1/services/aigc/text2image/image-synthesis, 
+ prompt=finished tomato tofu soup in white ceramic bowl, vibrant ora            
+[IMG] submit status=429,                                                        
+body={"code":"Throttling.RateQuota","message":"Requests rate limit exceeded,    
+please try again later. For details, see: https://help.aliyun.com/zh/model-stud 
+io/error-code#rate-limit","request_id":"a15cc1aa-5593-93de-a2d1-cfcdb83ad3de"}  
+[IMG] submit status=429,                                                        
+body={"code":"Throttling.RateQuota","message":"Requests rate limit exceeded,    
+please try again later. For details, see: https://help.aliyun.com/zh/model-stud 
+io/error-code#rate-limit","request_id":"3e3a5b1c-e739-9c5a-b563-e316c36d607c"}  
+[IMG-STEP] error: Client error '429 Too Many Requests' for url 'https://dashsco 
+pe.aliyuncs.com/api/v1/services/aigc/text2image/image-synthesis'                
+For more information check:                                                     
+https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429                    
+[IMG-STEP] error: Client error '429 Too Many Requests' for url 'https://dashsco 
+pe.aliyuncs.com/api/v1/services/aigc/text2image/image-synthesis'                
+
+● 原因很清楚：429 限流。并发同时提交4个任务，超过了免费账户的 QPS
+  限制（通常是1-2个/秒）。
+
+  解决方案：提交任务时加间隔，但轮询仍然并发 — 这样既不超限，又比串行快。
+● Update(backend\services\ai_service.py)
+  ⎿  Added 21 lines, removed 14 lines
+      134      step_details = json.loads(text)
+      135  
+      136      if image_api_key:
+      137 -        import asyncio                                        
+      137          import concurrent.futures
+      138 +        import time as _time                                  
+      139  
+      140 -        def _gen_step_images(step):                           
+      141 -            try:                                              
+      142 -                rp = step.get("result_image_prompt", "")      
+      143 -                pp = step.get("process_image_prompt", "")     
+      144 -                print(f"[IMG-STEP] step={step.get('step','')[:
+          -30]} result_prompt={bool(rp)} process_prompt={bool(pp)}")     
+      145 -                step["result_image_url"] = generate_image_qwen
+          -(image_api_key, rp, image_base_url) if rp else None           
+      146 -                step["process_image_url"] = generate_image_qwe
+          -n(image_api_key, pp, image_base_url) if pp else None          
+      147 -            except Exception as e:                            
+      148 -                print(f"[IMG-STEP] error: {e}")               
+      149 -                step["result_image_url"] = None               
+      150 -                step["process_image_url"] = None              
+      140 +        # 先串行提交所有任务（避免429限流），收集task_id      
+      141 +        task_ids = []                                         
+      142 +        for step in step_details:                             
+      143 +            rp = step.get("result_image_prompt", "")          
+      144 +            pp = step.get("process_image_prompt", "")         
+      145 +            print(f"[IMG-STEP] step={step.get('step','')[:30]}
+          + result_prompt={bool(rp)} process_prompt={bool(pp)}")         
+      146 +            r_task = _submit_image_task(image_api_key, rp) if 
+          +rp else None                                                  
+      147 +            _time.sleep(0.6)  # 避免超QPS                     
+      148 +            p_task = _submit_image_task(image_api_key, pp) if 
+          +pp else None                                                  
+      149 +            if pp:                                            
+      150 +                _time.sleep(0.6)                              
+      151 +            task_ids.append((step, r_task, p_task))           
+      152 +                                                              
+      153 +        # 并发轮询所有任务结果                                
+      154 +        def _poll(args):                                      
+      155 +            step, r_task, p_task = args                       
+      156 +            step["result_image_url"] = _poll_image_task(image_
+          +api_key, r_task) if r_task else None                          
+      157 +            step["process_image_url"] = _poll_image_task(image
+          +_api_key, p_task) if p_task else None                         
+      158              return step
+      159  
+      153 -        with concurrent.futures.ThreadPoolExecutor(max_workers
+          -=6) as executor:                                              
+      154 -            step_details = list(executor.map(_gen_step_images,
+          - step_details))                                               
+      160 +        with concurrent.futures.ThreadPoolExecutor(max_workers
+          +=8) as executor:                                              
+      161 +            step_details = list(executor.map(_poll, task_ids))
+      162      else:
+      163          for step in step_details:
+      164              step["result_image_url"] = None
+
+● 现在把 generate_image_qwen 拆成两个函数 _submit_image_task 和
+  _poll_image_task：
+
+● Update(backend\services\ai_service.py)
+  ⎿  Added 30 lines, removed 24 lines
+      286      return data["content"][0]["text"].strip()
+      287  
+      288  
+      289 -def generate_image_qwen(                                      
+      290 -    image_api_key: str,                                       
+      291 -    prompt: str,                                              
+      292 -    image_base_url: str = None,                               
+      293 -) -> str | None:                                              
+      294 -    """调用通义万象 wanx2.1-t2i-turbo 生成图片，返回图片URL或N
+          -one"""                                                        
+      295 -    import time                                               
+      296 -    # 图片生成必须用 DashScope 原生 API，不使用 compatible-mod
+          -e 地址                                                        
+      297 -    base = "https://dashscope.aliyuncs.com"                   
+      298 -    submit_url = f"{base}/api/v1/services/aigc/text2image/imag
+          -e-synthesis"                                                  
+      289 +def _submit_image_task(image_api_key: str, prompt: str) -> str
+          + | None:                                                      
+      290 +    """提交图片生成任务，返回 task_id"""                      
+      291      headers = {
+      292          "Authorization": f"Bearer {image_api_key}",
+      293          "Content-Type": "application/json",
+     ...
+      298          "input": {"prompt": prompt},
+      299          "parameters": {"size": "512*512", "n": 1},
+      300      }
+      309 -    print(f"[IMG] submitting to {submit_url}, prompt={prompt[:
+          -60]}")                                                        
+      310 -    r = httpx.post(submit_url, headers=headers, json=payload, 
+          -timeout=30)                                                   
+      311 -    print(f"[IMG] submit status={r.status_code}, body={r.text[
+          -:300]}")                                                      
+      312 -    r.raise_for_status()                                      
+      313 -    resp_json = r.json()                                      
+      314 -    task_id = resp_json.get("output", {}).get("task_id")      
+      315 -    if not task_id:                                           
+      316 -        print(f"[IMG] no task_id in response: {resp_json}")   
+      301 +    print(f"[IMG] submitting prompt={prompt[:60]}")           
+      302 +    r = httpx.post("https://dashscope.aliyuncs.com/api/v1/serv
+          +ices/aigc/text2image/image-synthesis",                        
+      303 +                   headers=headers, json=payload, timeout=30) 
+      304 +    print(f"[IMG] submit status={r.status_code}, body={r.text[
+          +:200]}")                                                      
+      305 +    if r.status_code != 200:                                  
+      306          return None
+      307 +    return r.json().get("output", {}).get("task_id")          
+      308  
+      319 -    query_url = f"{base}/api/v1/tasks/{task_id}"              
+      320 -    query_headers = {"Authorization": f"Bearer {image_api_key}
+          -"}                                                            
+      309 +                                                              
+      310 +def _poll_image_task(image_api_key: str, task_id: str) -> str 
+          +| None:                                                       
+      311 +    """轮询任务结果，返回图片URL"""                           
+      312 +    import time                                               
+      313 +    query_url = f"https://dashscope.aliyuncs.com/api/v1/tasks/
+          +{task_id}"                                                    
+      314 +    headers = {"Authorization": f"Bearer {image_api_key}"}    
+      315      for i in range(20):
+      316          time.sleep(3)
+      323 -        qr = httpx.get(query_url, headers=query_headers, timeo
+          -ut=15)                                                        
+      317 +        qr = httpx.get(query_url, headers=headers, timeout=15)
+      318          qr.raise_for_status()
+      319          output = qr.json().get("output", {})
+      320          status = output.get("task_status", "")
+      327 -        print(f"[IMG] poll {i+1}: status={status}")           
+      321 +        print(f"[IMG] poll {i+1} task={task_id[:8]}: status={s
+          +tatus}")                                                      
+      322          if status == "SUCCEEDED":
+      323              results = output.get("results", [])
+      324              url = results[0].get("url") if results else None
+      331 -            print(f"[IMG] succeeded, url={url}")              
+      325 +            print(f"[IMG] succeeded url={url}")               
+      326              return url
+      327          if status in ("FAILED", "CANCELED"):
+      328              print(f"[IMG] failed: {output}")
+      329              return None
+      336 -    print("[IMG] timeout waiting for image")                  
+      330 +    print(f"[IMG] timeout task={task_id[:8]}")                
+      331      return None
+      332  
+      333  
+      334 +def generate_image_qwen(                                      
+      335 +    image_api_key: str,                                       
+      336 +    prompt: str,                                              
+      337 +    image_base_url: str = None,                               
+      338 +) -> str | None:                                              
+      339 +    """单张图片生成（提交+轮询）"""                           
+      340 +    task_id = _submit_image_task(image_api_key, prompt)       
+      341 +    if not task_id:                                           
+      342 +        return None                                           
+      343 +    return _poll_image_task(image_api_key, task_id)           
+      344 +                                                              
+      345 +                                                              
+      346  def identify_ingredients(api_key: str, image_bytes: bytes, med
+           ia_type: str = "image/jpeg", base_url: str = None) -> list[str
+           ]:
+      347      image_data = base64.standard_b64encode(image_bytes).decode
+           ("utf-8")
+      348  
+
+● 重启后端再试。现在的流程是：
+
+  - 提交任务之间间隔0.6秒（避免429）
+  - 所有任务提交完后并发轮询（节省等待时间）
+
+  4个步骤×2张图 = 8次提交，约5秒提交完，然后并发轮询约3-5秒，总共约8-10秒，比之
+  前串行的24秒快很多。
+
+✻ Churned for 49s
+
+> /insights                                                                     
+
+● Your shareable insights report is ready:
+  file://C:\Users\31018.claude\usage-data\report.html
+
+  Want to dig into any section or try one of the suggestions?
+
+✻ Crunched for 38s

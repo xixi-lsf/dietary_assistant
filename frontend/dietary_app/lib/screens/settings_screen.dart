@@ -136,359 +136,475 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await ApiConfig.setWeatherApiKey(_weatherApiKeyCtrl.text);
     await ApiConfig.setSerperApiKey(_serperApiKeyCtrl.text);
     if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('✓ 已保存')),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.bg,
-      appBar: AppBar(title: const Text('设置 ⚙️')),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
-          : ListView(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
-              children: [
-                // 顶部横幅
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [AppColors.primarySoft, AppColors.greenSoft],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: AppColors.primaryLight, width: 2),
-                    boxShadow: [BoxShadow(color: AppColors.shadowOuter, blurRadius: 10, offset: const Offset(3, 4))],
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: const [
-                            Text('把小厨房调成最顺手的样子',
-                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textDark)),
-                            SizedBox(height: 6),
-                            Text('配置个人信息、热量目标和各种 API，让推荐更贴合你 🌿',
-                                style: TextStyle(fontSize: 13, color: AppColors.textMid, height: 1.5)),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Container(
-                        width: 60,
-                        height: 60,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.7),
-                          borderRadius: BorderRadius.circular(18),
-                          border: Border.all(color: AppColors.primaryLight, width: 1.5),
-                        ),
-                        child: const Icon(Icons.settings_suggest_rounded, size: 30, color: AppColors.primary),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                _SectionCard(
-                  title: '个人信息',
-                  emoji: '👤',
-                  accentColor: AppColors.primary,
-                  children: [
-                    TextField(controller: _nameCtrl, decoration: const InputDecoration(labelText: '姓名')),
-                    const SizedBox(height: 10),
-                    TextField(controller: _dislikesCtrl, decoration: const InputDecoration(labelText: '不喜欢的食物')),
-                    const SizedBox(height: 10),
-                    TextField(controller: _prefsCtrl, decoration: const InputDecoration(labelText: '饮食偏好')),
-                    const SizedBox(height: 10),
-                    TextField(controller: _goalCtrl, decoration: const InputDecoration(labelText: '健康目标')),
-                    const SizedBox(height: 10),
-                    TextField(
-                      controller: _cycleDaysCtrl,
-                      decoration: const InputDecoration(labelText: '饮食观察周期（天）', hintText: '默认7天'),
-                      keyboardType: TextInputType.number,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                _SectionCard(
-                  title: '身体数据',
-                  emoji: '💪',
-                  subtitle: '用于估算每日热量目标',
-                  accentColor: AppColors.green,
-                  children: [
-                    Row(children: [
-                      _GenderChip(label: '男', selected: _gender == 'male', onTap: () => setState(() => _gender = 'male')),
-                      const SizedBox(width: 10),
-                      _GenderChip(label: '女', selected: _gender == 'female', onTap: () => setState(() => _gender = 'female')),
-                    ]),
-                    const SizedBox(height: 10),
-                    Row(children: [
-                      Expanded(child: TextField(controller: _ageCtrl,
-                   decoration: const InputDecoration(labelText: '年龄', suffixText: '岁'),
-                          keyboardType: TextInputType.number)),
-                      const SizedBox(width: 10),
-                      Expanded(child: TextField(controller: _heightCtrl,
-                          decoration: const InputDecoration(labelText: '身高', suffixText: 'cm'),
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-                      const SizedBox(width: 10),
-                      Expanded(child: TextField(controller: _weightCtrl,
-                          decoration: const InputDecoration(labelText: '体重', suffixText: 'kg'),
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true))),
-                    ]),
-                    const SizedBox(height: 10),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: AppColors.bg,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: AppColors.border, width: 2),
-                      ),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<String>(
-                          value: _activityLevel,
-                          isExpanded: true,
-                          items: _activityOptions.map((o) => DropdownMenuItem(value: o.$1, child: Text(o.$2))).toList(),
-                          onChanged: (v) => setState(() => _activityLevel = v!),
-                        ),
-                      ),
-                    ),
-                    if (_bmr != null) ...[
-                      const SizedBox(height: 12),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                        decoration: BoxDecoration(
-                          color: AppColors.primarySoft,
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: AppColors.primaryLight, width: 1.5),
-                        ),
-                        child: Row(children: [
-                          const Icon(Icons.local_fire_department_rounded, color: AppColors.primary, size: 18),
-                          const SizedBox(width: 8),
-                          Text('每日热量目标：${_bmr!.toStringAsFixed(0)} kcal',
-                              style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.textDark)),
-                        ]),
-                      ),
-                    ],
-                  ],
-                ),
-                const SizedBox(height: 12),
-                _SectionCard(
-                  title: 'API 配置',
-                  emoji: '🔑',
-                  accentColor: AppColors.lavender,
-                  children: [
-                    TextField(controller: _baseUrlCtrl,
-                        decoration: const InputDecoration(labelText: '后端地址', hintText: 'http://localhost:8000')),
-                    const SizedBox(height: 10),
-                    TextField(controller: _apiKeyCtrl,
-                        decoration: const InputDecoration(labelText: 'AI API Key'), obscureText: true),
-                    const SizedBox(height: 10),
-                    TextField(controller: _aiBaseUrlCtrl,
-                        decoration: const InputDecoration(labelText: 'AI Base URL（代理时填写）', hintText: 'https://codeapi.icu')),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                _SectionCard(
-                  title: '图片生成 API',
-                  emoji: '🎨',
-                  subtitle: '可选：用于推荐成品图或步骤图',
-                  accentColor: AppColors.blue,
-                  children: [
-                    const Text('',
-                        style: TextStyle(fontSize: 12, color: AppColors.textLight)),
-                    const SizedBox(height: 10),
-                    TextField(controller: _imageApiKeyCtrl,
-                        decoration: const InputDecoration(labelText: '图片生成 API Key'), obscureText: true),
-                    const SizedBox(height: 10),
-                    TextField(controller: _imageBaseUrlCtrl,
-                        decoration: const InputDecoration(labelText: '图片生成 Base URL')),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                _SectionCard(
-                  title: '外部工具 API',
-                  emoji: '🌐',
-                  subtitle: '',
-                  accentColor: AppColors.yellow,
-                  children: [
-                    TextField(controller: _weatherApiKeyCtrl,
-                        decoration: const InputDecoration(labelText: 'OpenWeatherMap API Key', hintText: '天气查询'),
-                        obscureText: true),
-                    const SizedBox(height: 10),
-                    TextField(controller: _serperApiKeyCtrl,
-                        decoration: const InputDecoration(labelText: 'Serper API Key', hintText: '网页搜索'),
-                        obscureText: true),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                GestureDetector(
-                  onTap: _save,
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary,
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: const Color(0xFFE06040), width: 3),
-                      boxShadow: ClayShadow.primaryBtn(),
-                    ),
-                    child: const Center(
-                      child: Text('保存设置',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white)),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                _SectionCard(
-                  title: '收藏菜品',
-                  emoji: '❤️',
-                  accentColor: const Color(0xFFE57373),
-                  trailing: GestureDetector(
-                    onTap: _loadFavorites,
-                    child: Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: AppColors.primarySoft,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(Icons.refresh_rounded, size: 18, color: AppColors.primary),
-                    ),
-                  ),
-                  children: [
-                    if (_favsLoading)
-                      const Center(child: Padding(
-                        padding: EdgeInsets.all(12),
-                        child: CircularProgressIndicator(color: AppColors.primary),
-                      ))
-                    else if (_favorites.isEmpty)
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: AppColors.bg,
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: AppColors.border, width: 1.5),
-                        ),
-                        child: const Text('还没有收藏的菜品 🍽️',
-                            style: TextStyle(color: AppColors.textLight), textAlign: TextAlign.center),
-                      )
-                    else
-                      ..._favorites.map((fav) => Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: AppColors.bgCard,
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: AppColors.border, width: 1.5),
-                          ),
-                          child: ListTile(
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-                            leading: Container(
-                              width: 38,
-                              height: 38,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFFFEBEB),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: const Icon(Icons.favorite_rounded, color: Color(0xFFE57373), size: 20),
-                            ),
-                            title: Text(fav['recipe_name'] ?? '',
-                                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppColors.textDark)),
-                            trailing: GestureDetector(
-                              onTap: () => _deleteFavorite(fav['id']),
-                              child: Container(
-                                width: 32,
-                                height: 32,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFFFEBEB),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: const Icon(Icons.delete_outline_rounded, color: Color(0xFFE57373), size: 16),
-                              ),
-                            ),
-                            onTap: () {
-                              final dataStr = fav['recipe_data'] ?? '';
-                              if (dataStr.isNotEmpty) {
-                                try {
-                                  final recipeJson = jsonDecode(dataStr);
-                                  final recipe = Recipe.fromJson(recipeJson);
-                                  Navigator.push(context, MaterialPageRoute(builder: (_) => RecipeDetailScreen(recipe: recipe)));
-                                } catch (_) {}
-                              }
-                            },
-                          ),
-                        ),
-                      )),
-                  ],
-                ),
-              ],
-            ),
-    );
-  }
-}
-
-class _GenderChip extends StatelessWidget {
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _GenderChip({required this.label, required this.selected, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-        decoration: BoxDecoration(
-          color: selected ? AppColors.primarySoft : AppColors.bg,
+      SnackBar(
+        content: const Text('已保存 🌱', style: TextStyle(color: SketchColors.textMain)),
+        backgroundColor: SketchColors.bg,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: selected ? AppColors.primaryLight : AppColors.border,
-            width: selected ? 2 : 1.5,
-          ),
+          side: const BorderSide(color: SketchColors.lineBrown, width: 2),
         ),
-        child: Text(label,
-            style: TextStyle(
-              fontWeight: FontWeight.w700,
-              color: selected ? AppColors.primary : AppColors.textLight,
-            )),
       ),
     );
   }
+
+  // ── 手绘风输入框 ──
+  Widget _sketchField(TextEditingController ctrl, String label, {
+    String? hint, bool obscure = false, String? suffix,
+    TextInputType? keyboardType,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(left: 4, bottom: 5),
+            child: Text(label, style: TextStyle(
+              fontSize: 12, fontWeight: FontWeight.w700,
+              color: SketchColors.lineBrown.withOpacity(0.7),
+            )),
+          ),
+          CustomPaint(
+            foregroundPainter: DashedBorderPainter(
+              color: SketchColors.lineBrown.withOpacity(0.45),
+              strokeWidth: 2,
+              dashWidth: 6,
+              dashSpace: 4,
+              borderRadius: BorderRadius.circular(12),
+              wobble: 0.6,
+            ),
+            child: TextField(
+              controller: ctrl,
+              obscureText: obscure,
+              keyboardType: keyboardType,
+              style: const TextStyle(fontSize: 14, color: SketchColors.textMain),
+              decoration: InputDecoration(
+                hintText: hint,
+                suffixText: suffix,
+                hintStyle: TextStyle(color: SketchColors.lineBrown.withOpacity(0.35), fontSize: 13),
+                suffixStyle: TextStyle(color: SketchColors.lineBrown.withOpacity(0.5), fontSize: 13),
+                filled: true,
+                fillColor: Colors.white,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                isDense: true,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── 手绘风性别 chip ──
+  Widget _sketchGenderChip(String label, String value) {
+    final selected = _gender == value;
+    return GestureDetector(
+      onTap: () => setState(() => _gender = value),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 10),
+        decoration: BoxDecoration(
+          color: selected ? const Color(0xFFF0F9F0) : Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.elliptical(selected ? 18 : 12, 10),
+            topRight: Radius.elliptical(10, selected ? 18 : 12),
+            bottomRight: Radius.elliptical(selected ? 16 : 12, 10),
+            bottomLeft: Radius.elliptical(10, selected ? 16 : 12),
+          ),
+          border: Border.all(
+            color: selected ? const Color(0xFF2E7D32) : SketchColors.lineBrown.withOpacity(0.35),
+            width: selected ? 2.5 : 1.5,
+          ),
+          boxShadow: selected
+              ? [const BoxShadow(color: Color(0x152E7D32), offset: Offset(3, 3), blurRadius: 0)]
+              : [BoxShadow(color: SketchColors.lineBrown.withOpacity(0.06), offset: const Offset(2, 2), blurRadius: 0)],
+        ),
+        child: Text(label, style: TextStyle(
+          fontWeight: FontWeight.w700, fontSize: 14,
+          color: selected ? const Color(0xFF2E7D32) : SketchColors.lineBrown.withOpacity(0.6),
+        )),
+      ),
+    );
+  }
+
+  // ── 主 build ──
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: SketchColors.bg,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        title: const Text('设置 ⚙️'),
+      ),
+      body: Container(
+        color: SketchColors.bg,
+        child: Stack(
+          children: [
+            Positioned.fill(child: CustomPaint(painter: PaperDotsPainter())),
+            _loading
+                ? const Center(child: CircularProgressIndicator(color: SketchColors.lineBrown))
+                : LayoutBuilder(
+                    builder: (context, constraints) {
+                      final isWide = constraints.maxWidth > 860;
+                      final pad = isWide ? 32.0 : 16.0;
+                      return ListView(
+                        padding: EdgeInsets.fromLTRB(pad, 8, pad, 32),
+                        children: [
+                          _buildBanner(),
+                          const SizedBox(height: 18),
+                          if (isWide)
+                            _buildWideLayout()
+                          else
+                            _buildNarrowLayout(),
+                          const SizedBox(height: 18),
+                          _buildSaveButton(),
+                          const SizedBox(height: 20),
+                          _buildFavoritesSection(),
+                        ],
+                      );
+                    },
+                  ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── 顶部横幅 ──
+  Widget _buildBanner() {
+    return HandDrawnCard(
+      color: const Color(0xFFF0F9F0),
+      rotation: -0.3,
+      hoverRotation: 0.2,
+      padding: const EdgeInsets.all(20),
+      child: Row(children: [
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text('把小厨房调成最顺手的样子',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: SketchColors.textMain)),
+            const SizedBox(height: 6),
+            Text('配置个人信息、热量目标和各种 API，让推荐更贴合你 🌿',
+                style: TextStyle(fontSize: 13, color: SketchColors.lineBrown.withOpacity(0.7), height: 1.5)),
+          ]),
+        ),
+        const SizedBox(width: 12),
+        CustomPaint(
+          foregroundPainter: DashedBorderPainter(
+            color: SketchColors.lineBrown.withOpacity(0.5),
+            strokeWidth: 2,
+            dashWidth: 5,
+            dashSpace: 4,
+            borderRadius: BorderRadius.circular(16),
+            wobble: 0.8,
+          ),
+          child: Container(
+            width: 56, height: 56,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.7),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: const Center(child: Text('🛠️', style: TextStyle(fontSize: 28))),
+          ),
+        ),
+      ]),
+    );
+  }
+
+  // ── 宽屏两栏 ──
+  Widget _buildWideLayout() {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // 左栏：个人信息 + 身体数据
+        Expanded(child: Column(children: [
+          _buildPersonalSection(),
+          const SizedBox(height: 16),
+          _buildBodySection(),
+        ])),
+        const SizedBox(width: 24),
+        // 右栏：API 配置
+        Expanded(child: Column(children: [
+          _buildApiSection(),
+          const SizedBox(height: 16),
+          _buildImageApiSection(),
+          const SizedBox(height: 16),
+          _buildToolApiSection(),
+        ])),
+      ],
+    );
+  }
+
+  // ── 窄屏单栏 ──
+  Widget _buildNarrowLayout() {
+    return Column(children: [
+      _buildPersonalSection(),
+      const SizedBox(height: 16),
+      _buildBodySection(),
+      const SizedBox(height: 16),
+      _buildApiSection(),
+      const SizedBox(height: 16),
+      _buildImageApiSection(),
+      const SizedBox(height: 16),
+      _buildToolApiSection(),
+    ]);
+  }
+
+  // ── 个人信息 ──
+  Widget _buildPersonalSection() {
+    return _SketchSection(
+      title: '个人信息',
+      emoji: '👤',
+      rotation: -0.5,
+      children: [
+        _sketchField(_nameCtrl, '姓名'),
+        _sketchField(_dislikesCtrl, '不喜欢的食物'),
+        _sketchField(_prefsCtrl, '饮食偏好'),
+        _sketchField(_goalCtrl, '健康目标'),
+        _sketchField(_cycleDaysCtrl, '饮食观察周期', hint: '默认7天', suffix: '天',
+            keyboardType: TextInputType.number),
+      ],
+    );
+  }
+
+  // ── 身体数据 ──
+  Widget _buildBodySection() {
+    return _SketchSection(
+      title: '身体数据',
+      emoji: '💪',
+      subtitle: '用于估算每日热量目标',
+      rotation: 0.4,
+      children: [
+        Row(children: [
+          _sketchGenderChip('男', 'male'),
+          const SizedBox(width: 10),
+          _sketchGenderChip('女', 'female'),
+        ]),
+        const SizedBox(height: 12),
+        Row(children: [
+          Expanded(child: _sketchField(_ageCtrl, '年龄', suffix: '岁', keyboardType: TextInputType.number)),
+          const SizedBox(width: 10),
+          Expanded(child: _sketchField(_heightCtrl, '身高', suffix: 'cm',
+              keyboardType: const TextInputType.numberWithOptions(decimal: true))),
+          const SizedBox(width: 10),
+          Expanded(child: _sketchField(_weightCtrl, '体重', suffix: 'kg',
+              keyboardType: const TextInputType.numberWithOptions(decimal: true))),
+        ]),
+        // 活动等级下拉
+        Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(left: 4, bottom: 5),
+                child: Text('活动等级', style: TextStyle(
+                  fontSize: 12, fontWeight: FontWeight.w700,
+                  color: SketchColors.lineBrown.withOpacity(0.7),
+                )),
+              ),
+              CustomPaint(
+                foregroundPainter: DashedBorderPainter(
+                  color: SketchColors.lineBrown.withOpacity(0.45),
+                  strokeWidth: 2,
+                  dashWidth: 6,
+                  dashSpace: 4,
+                  borderRadius: BorderRadius.circular(12),
+                  wobble: 0.6,
+                ),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: _activityLevel,
+                      isExpanded: true,
+                      style: const TextStyle(fontSize: 14, color: SketchColors.textMain),
+                      icon: Icon(Icons.expand_more_rounded, color: SketchColors.lineBrown.withOpacity(0.5)),
+                      items: _activityOptions.map((o) => DropdownMenuItem(
+                        value: o.$1,
+                        child: Text(o.$2),
+                      )).toList(),
+                      onChanged: (v) => setState(() => _activityLevel = v!),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        // 热量目标
+        if (_bmr != null)
+          HandDrawnCard(
+            color: const Color(0xFFF0F9F0),
+            rotation: 0,
+            hoverRotation: 0,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Row(children: [
+              const Text('🔥', style: TextStyle(fontSize: 18)),
+              const SizedBox(width: 8),
+              Text('每日热量目标：${_bmr!.toStringAsFixed(0)} kcal',
+                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14, color: SketchColors.textMain)),
+            ]),
+          ),
+      ],
+    );
+  }
+
+  // ── API 配置 ──
+  Widget _buildApiSection() {
+    return _SketchSection(
+      title: 'API 配置',
+      emoji: '🔑',
+      rotation: -0.3,
+      children: [
+        _sketchField(_baseUrlCtrl, '后端地址', hint: 'http://localhost:8000'),
+        _sketchField(_apiKeyCtrl, 'AI API Key', obscure: true),
+        _sketchField(_aiBaseUrlCtrl, 'AI Base URL（代理时填写）', hint: 'https://codeapi.icu'),
+      ],
+    );
+  }
+
+  // ── 图片生成 API ──
+  Widget _buildImageApiSection() {
+    return _SketchSection(
+      title: '图片生成 API',
+      emoji: '🎨',
+      subtitle: '可选：用于推荐成品图或步骤图',
+      rotation: 0.5,
+      children: [
+        _sketchField(_imageApiKeyCtrl, '图片生成 API Key', obscure: true),
+        _sketchField(_imageBaseUrlCtrl, '图片生成 Base URL'),
+      ],
+    );
+  }
+
+  // ── 外部工具 API ──
+  Widget _buildToolApiSection() {
+    return _SketchSection(
+      title: '外部工具 API',
+      emoji: '🌐',
+      rotation: -0.4,
+      children: [
+        _sketchField(_weatherApiKeyCtrl, 'OpenWeatherMap API Key', hint: '天气查询', obscure: true),
+        _sketchField(_serperApiKeyCtrl, 'Serper API Key', hint: '网页搜索', obscure: true),
+      ],
+    );
+  }
+
+  // ── 保存按钮 ──
+  Widget _buildSaveButton() {
+    return JellyButton(
+      onTap: _save,
+      child: const Row(mainAxisSize: MainAxisSize.min, children: [
+        Text('💾'),
+        SizedBox(width: 8),
+        Text('保存设置'),
+      ]),
+    );
+  }
+
+  // ── 收藏菜品 ──
+  Widget _buildFavoritesSection() {
+    return _SketchSection(
+      title: '收藏菜品',
+      emoji: '❤️',
+      rotation: 0.3,
+      trailing: GestureDetector(
+        onTap: _loadFavorites,
+        child: CustomPaint(
+          foregroundPainter: DashedBorderPainter(
+            color: SketchColors.lineBrown.withOpacity(0.4),
+            strokeWidth: 1.5,
+            dashWidth: 4,
+            dashSpace: 3,
+            borderRadius: BorderRadius.circular(10),
+            wobble: 0.5,
+          ),
+          child: Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(Icons.refresh_rounded, size: 18, color: SketchColors.lineBrown.withOpacity(0.6)),
+          ),
+        ),
+      ),
+      children: [
+        if (_favsLoading)
+          const Center(child: Padding(
+            padding: EdgeInsets.all(12),
+            child: CircularProgressIndicator(color: SketchColors.lineBrown),
+          ))
+        else if (_favorites.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: SketchColors.lineBrown.withOpacity(0.2), width: 1.5),
+            ),
+            child: Text('还没有收藏的菜品 🍽️',
+                style: TextStyle(color: SketchColors.lineBrown.withOpacity(0.5)), textAlign: TextAlign.center),
+          )
+        else
+          ..._favorites.map((fav) => Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: _FavCard(
+              name: fav['recipe_name'] ?? '',
+              onDelete: () => _deleteFavorite(fav['id']),
+              onTap: () {
+                final dataStr = fav['recipe_data'] ?? '';
+                if (dataStr.isNotEmpty) {
+                  try {
+                    final recipeJson = jsonDecode(dataStr);
+                    final recipe = Recipe.fromJson(recipeJson);
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => RecipeDetailScreen(recipe: recipe)));
+                  } catch (_) {}
+                }
+              },
+            ),
+          )),
+      ],
+    );
+  }
 }
 
-class _SectionCard extends StatelessWidget {
+/// 手绘风分区卡片
+class _SketchSection extends StatelessWidget {
   final String title;
   final String emoji;
   final String? subtitle;
   final Widget? trailing;
-  final Color accentColor;
+  final double rotation;
   final List<Widget> children;
 
-  const _SectionCard({
+  const _SketchSection({
     required this.title,
     required this.emoji,
     this.subtitle,
     this.trailing,
-    required this.accentColor,
+    this.rotation = 0,
     required this.children,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.bgCard,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.border, width: 3),
-        boxShadow: ClayShadow.raised(),
-      ),
-      padding: const EdgeInsets.all(18),
+    return HandDrawnCard(
+      color: SketchColors.bg,
+      rotation: rotation,
+      hoverRotation: -rotation,
+      padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -499,19 +615,110 @@ class _SectionCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title,
-                      style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: AppColors.textDark)),
+                  Text(title, style: const TextStyle(
+                    fontWeight: FontWeight.w800, fontSize: 16, color: SketchColors.textMain,
+                  )),
                   if (subtitle != null)
-                    Text(subtitle!,
-                        style: const TextStyle(fontSize: 12, color: AppColors.textLight)),
+                    Text(subtitle!, style: TextStyle(
+                      fontSize: 12, color: SketchColors.lineBrown.withOpacity(0.6),
+                    )),
                 ],
               ),
             ),
             if (trailing != null) trailing!,
           ]),
           const SizedBox(height: 16),
+          // 虚线分隔
+          CustomPaint(
+            size: const Size(double.infinity, 2),
+            painter: _DashLinePainter(),
+          ),
+          const SizedBox(height: 16),
           ...children,
         ],
+      ),
+    );
+  }
+}
+
+/// 水平虚线分隔线
+class _DashLinePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = SketchColors.lineBrown.withOpacity(0.2)
+      ..strokeWidth = 1.5
+      ..strokeCap = StrokeCap.round;
+    double x = 0;
+    while (x < size.width) {
+      canvas.drawLine(Offset(x, size.height / 2), Offset(x + 6, size.height / 2), paint);
+      x += 10;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+/// 收藏菜品卡片
+class _FavCard extends StatelessWidget {
+  final String name;
+  final VoidCallback onDelete;
+  final VoidCallback onTap;
+
+  const _FavCard({required this.name, required this.onDelete, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: CustomPaint(
+        foregroundPainter: DashedBorderPainter(
+          color: SketchColors.lineBrown.withOpacity(0.35),
+          strokeWidth: 1.5,
+          dashWidth: 6,
+          dashSpace: 4,
+          borderRadius: BorderRadius.circular(14),
+          wobble: 0.5,
+        ),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: [BoxShadow(color: SketchColors.lineBrown.withOpacity(0.06), offset: const Offset(3, 3), blurRadius: 0)],
+          ),
+          child: Row(children: [
+            const Text('❤️', style: TextStyle(fontSize: 16)),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(name, style: const TextStyle(
+                fontWeight: FontWeight.w700, fontSize: 14, color: SketchColors.textMain,
+              )),
+            ),
+            GestureDetector(
+              onTap: onDelete,
+              child: CustomPaint(
+                foregroundPainter: DashedBorderPainter(
+                  color: const Color(0xFFE57373).withOpacity(0.5),
+                  strokeWidth: 1.5,
+                  dashWidth: 4,
+                  dashSpace: 3,
+                  borderRadius: BorderRadius.circular(10),
+                  wobble: 0.4,
+                ),
+                child: Container(
+                  width: 30, height: 30,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF5F5),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.delete_outline_rounded, color: Color(0xFFE57373), size: 16),
+                ),
+              ),
+            ),
+          ]),
+        ),
       ),
     );
   }

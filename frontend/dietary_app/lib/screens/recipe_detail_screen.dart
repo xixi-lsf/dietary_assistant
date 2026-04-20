@@ -118,94 +118,146 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
       builder: (_) => StatefulBuilder(
         builder: (ctx, setS) => Dialog(
           backgroundColor: Colors.transparent,
-          child: Container(
-            decoration: BoxDecoration(
-              color: AppColors.bgCard,
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: AppColors.border, width: 2),
-              boxShadow: [BoxShadow(color: AppColors.shadowOuter, blurRadius: 16, offset: const Offset(3, 5))],
-            ),
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('记录这道菜 🍽️',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.textDark)),
-                const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: AppColors.primarySoft,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: AppColors.primaryLight, width: 1.5),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(recipe.name,
-                          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: AppColors.textDark)),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${_nutritionValue(recipe.nutrition, 'calories').toStringAsFixed(0)} kcal · 蛋白质 ${_nutritionValue(recipe.nutrition, 'protein').toStringAsFixed(1)}g',
-                        style: const TextStyle(fontSize: 13, color: AppColors.textMid),
-                      ),
-                    ],
-                  ),
+          child: CustomPaint(
+            foregroundPainter: DashedBorderPainter(wobble: 1.4),
+            child: Container(
+              decoration: BoxDecoration(
+                color: SketchColors.bg,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.elliptical(40, 20),
+                  topRight: Radius.elliptical(15, 50),
+                  bottomRight: Radius.elliptical(50, 15),
+                  bottomLeft: Radius.elliptical(20, 40),
                 ),
-                const SizedBox(height: 14),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.bg,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: AppColors.border, width: 2),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: mealType,
-                      isExpanded: true,
-                      items: List.generate(mealTypes.length, (i) => DropdownMenuItem(
-                        value: mealTypes[i], child: Text(mealLabels[i]),
+                boxShadow: const [
+                  BoxShadow(color: Color(0x1A8D6E63), offset: Offset(10, 10), blurRadius: 0),
+                ],
+              ),
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('记录这道菜 🍽️',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                        color: SketchColors.textMain,
+                        fontFamily: 'LXGWWenKai',
                       )),
-                      onChanged: (v) { if (v != null) setS(() => mealType = v); },
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: SketchColors.pinkLight,
+                      border: Border.all(color: SketchColors.lineBrown, width: 2),
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(12),
+                        topRight: Radius.circular(20),
+                        bottomRight: Radius.circular(8),
+                        bottomLeft: Radius.circular(16),
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(recipe.name,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 15,
+                              color: SketchColors.textMain,
+                              fontFamily: 'LXGWWenKai',
+                            )),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${_nutritionValue(recipe.nutrition, 'calories').toStringAsFixed(0)} kcal · 蛋白质 ${_nutritionValue(recipe.nutrition, 'protein').toStringAsFixed(1)}g',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: SketchColors.textMain.withOpacity(0.6),
+                            fontFamily: 'LXGWWenKai',
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ),
-                const SizedBox(height: 20),
-                Row(children: [
-                  Expanded(child: GestureDetector(
-                    onTap: () => Navigator.pop(ctx),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      decoration: BoxDecoration(
-                        color: AppColors.bg,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: AppColors.border, width: 2),
+                  const SizedBox(height: 14),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(10),
+                        topRight: Radius.circular(16),
+                        bottomRight: Radius.circular(8),
+                        bottomLeft: Radius.circular(14),
                       ),
-                      child: const Center(child: Text('取消',
-                          style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.textMid))),
+                      border: Border.all(color: SketchColors.lineBrown, width: 2),
                     ),
-                  )),
-                  const SizedBox(width: 12),
-                  Expanded(child: GestureDetector(
-                    onTap: () async {
-                      Navigator.pop(ctx);
-                      await _logNutritionAndDeductIngredients(mealType, today);
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary,
-                        borderRadius: BorderRadius.circular(14),
-                        boxShadow: [BoxShadow(color: AppColors.primary.withOpacity(0.3), blurRadius: 8, offset: const Offset(1, 3))],
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: mealType,
+                        isExpanded: true,
+                        style: const TextStyle(
+                          color: SketchColors.textMain,
+                          fontFamily: 'LXGWWenKai',
+                          fontSize: 14,
+                        ),
+                        items: List.generate(mealTypes.length, (i) => DropdownMenuItem(
+                          value: mealTypes[i], child: Text(mealLabels[i]),
+                        )),
+                        onChanged: (v) { if (v != null) setS(() => mealType = v); },
                       ),
-                      child: const Center(child: Text('确认记录',
-                          style: TextStyle(fontWeight: FontWeight.w700, color: Colors.white))),
                     ),
-                  )),
-                ]),
-              ],
+                  ),
+                  const SizedBox(height: 20),
+                  Row(children: [
+                    Expanded(child: GestureDetector(
+                      onTap: () => Navigator.pop(ctx),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(50),
+                          border: Border.all(color: SketchColors.lineBrown, width: 2),
+                          boxShadow: const [
+                            BoxShadow(color: Color(0x1A8D6E63), offset: Offset(3, 3), blurRadius: 0),
+                          ],
+                        ),
+                        child: const Center(child: Text('取消',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              color: SketchColors.textMain,
+                              fontFamily: 'LXGWWenKai',
+                            ))),
+                      ),
+                    )),
+                    const SizedBox(width: 12),
+                    Expanded(child: GestureDetector(
+                      onTap: () async {
+                        Navigator.pop(ctx);
+                        await _logNutritionAndDeductIngredients(mealType, today);
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        decoration: BoxDecoration(
+                          color: SketchColors.accentSoft,
+                          borderRadius: BorderRadius.circular(50),
+                          border: Border.all(color: SketchColors.lineBrown, width: 2),
+                          boxShadow: const [
+                            BoxShadow(color: Color(0x1A8D6E63), offset: Offset(3, 3), blurRadius: 0),
+                          ],
+                        ),
+                        child: const Center(child: Text('确认记录',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              color: SketchColors.textMain,
+                              fontFamily: 'LXGWWenKai',
+                            ))),
+                      ),
+                    )),
+                  ]),
+                ],
+              ),
             ),
           ),
         ),
@@ -256,283 +308,343 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
   Widget build(BuildContext context) {
     final recipe = widget.recipe;
     return Scaffold(
-      backgroundColor: AppColors.bg,
-      appBar: AppBar(
-        title: Text(recipe.name),
-        actions: [
-          GestureDetector(
-            onTap: _toggleFavorite,
-            child: Container(
-              margin: const EdgeInsets.only(right: 6),
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: _isFavorited ? const Color(0xFFFFEBEB) : AppColors.bg,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: _isFavorited ? const Color(0xFFFFCCCC) : AppColors.border,
-                  width: 1.5,
+      backgroundColor: SketchColors.bg,
+      body: Stack(
+        children: [
+          Positioned.fill(child: CustomPaint(painter: PaperDotsPainter())),
+          SafeArea(
+            child: Column(
+              children: [
+                // 手绘风顶栏
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(8, 8, 12, 0),
+                  child: Row(
+                    children: [
+                      _SketchIconBtn(
+                        icon: Icons.arrow_back_rounded,
+                        onTap: () => Navigator.pop(context),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          recipe.name,
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w900,
+                            color: SketchColors.textMain,
+                            fontFamily: 'LXGWWenKai',
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      _SketchIconBtn(
+                        icon: _isFavorited ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                        onTap: _toggleFavorite,
+                        active: _isFavorited,
+                      ),
+                      const SizedBox(width: 6),
+                      _SketchIconBtn(
+                        icon: Icons.add_circle_outline_rounded,
+                        onTap: _showLogDialog,
+                      ),
+                      const SizedBox(width: 6),
+                      _SketchIconBtn(
+                        icon: Icons.star_outline_rounded,
+                        onTap: _showFeedbackDialog,
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              child: Icon(
-                _isFavorited ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                color: _isFavorited ? const Color(0xFFE57373) : AppColors.textLight,
-                size: 20,
-              ),
-            ),
-          ),
-          GestureDetector(
-            onTap: _showLogDialog,
-            child: Container(
-              margin: const EdgeInsets.only(right: 6),
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: AppColors.primarySoft,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.primaryLight, width: 1.5),
-              ),
-              child: const Icon(Icons.add_circle_outline_rounded, color: AppColors.primary, size: 20),
-            ),
-          ),
-          GestureDetector(
-            onTap: _showFeedbackDialog,
-            child: Container(
-              margin: const EdgeInsets.only(right: 12),
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: AppColors.yellowSoft,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFFFE599), width: 1.5),
-              ),
-              child: const Icon(Icons.star_outline_rounded, color: Color(0xFFD4A017), size: 20),
+                const SizedBox(height: 8),
+                // 内容区
+                Expanded(
+                  child: _loading
+                      ? const Center(child: _SketchLoadingDots())
+                      : _error != null
+                          ? Center(
+                              child: Text('加载失败：$_error',
+                                  style: const TextStyle(
+                                    color: SketchColors.textMain,
+                                    fontFamily: 'LXGWWenKai',
+                                  )),
+                            )
+                          : _buildContent(recipe),
+                ),
+              ],
             ),
           ),
         ],
       ),
-      body: _loading
-          ? Center(
-              child: Column(mainAxisSize: MainAxisSize.min, children: [
-                const SizedBox(
-                  width: 44, height: 44,
-                  child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 3),
+    );
+  }
+
+  Widget _buildContent(Recipe recipe) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isWide = constraints.maxWidth >= 860;
+        final hPad = isWide ? 36.0 : 20.0;
+        return ListView(
+          padding: EdgeInsets.fromLTRB(hPad, 4, hPad, 32),
+          children: [
+            // 基本信息卡
+            HandDrawnCard(
+              color: SketchColors.pinkLight,
+              rotation: -0.6,
+              hoverRotation: 0,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              child: Wrap(
+                spacing: 16,
+                runSpacing: 8,
+                children: [
+                  _SketchInfoChip(emoji: '⏱️', label: '${recipe.timeMinutes} 分钟'),
+                  _SketchInfoChip(
+                    emoji: '🔥',
+                    label: '${_nutritionValue(recipe.nutrition, 'calories').toStringAsFixed(0)} kcal',
+                  ),
+                  if (recipe.category != null)
+                    _SketchInfoChip(emoji: '🏷️', label: recipe.category!),
+                ],
+              ),
+            ),
+            const SizedBox(height: 18),
+            // 食材
+            _SketchSectionHeader(emoji: '🥬', title: '食材'),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: recipe.ingredients.map((item) => Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: Border.all(color: SketchColors.lineBrown, width: 2),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(12),
+                    topRight: Radius.circular(20),
+                    bottomRight: Radius.circular(8),
+                    bottomLeft: Radius.circular(16),
+                  ),
                 ),
-                const SizedBox(height: 14),
-                Text('AI 正在生成步骤详情...', style: TextStyle(color: AppColors.textMid, fontSize: 14)),
-              ]),
-            )
-          : _error != null
-              ? Center(child: Text('加载失败：$_error', style: const TextStyle(color: AppColors.textMid)))
-              : LayoutBuilder(
-                  builder: (context, constraints) {
-                    final useTwoColumns = constraints.maxWidth >= 860;
-                    return ListView(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                      children: [
-                        // 基本信息卡
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: AppColors.primarySoft,
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: AppColors.primaryLight, width: 3),
-                            boxShadow: ClayShadow.raised(),
-                          ),
-                          child: Row(children: [
-                            _InfoChip(icon: Icons.timer_outlined, label: '${recipe.timeMinutes} 分钟', color: AppColors.primary),
-                            const SizedBox(width: 10),
-                            _InfoChip(icon: Icons.local_fire_department_outlined,
-                                label: '${_nutritionValue(recipe.nutrition, 'calories').toStringAsFixed(0)} kcal',
-                                color: AppColors.primary),
-                            if (recipe.category != null) ...[
-                              const SizedBox(width: 10),
-                              _InfoChip(icon: Icons.label_outline_rounded, label: recipe.category!, color: AppColors.green),
-                            ],
-                          ]),
-                        ),
-                        const SizedBox(height: 14),
-                        // 食材
-                        _SectionHeader(emoji: '🥬', title: '食材'),
-                        const SizedBox(height: 8),
-                        Wrap(
-                          spacing: 8, runSpacing: 8,
-                          children: recipe.ingredients.map((item) => Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: AppColors.greenSoft,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: AppColors.greenLight, width: 1.5),
-                            ),
-                            child: Text(item, style: const TextStyle(fontSize: 13, color: AppColors.textDark, fontWeight: FontWeight.w600)),
-                          )).toList(),
-                        ),
-                        const SizedBox(height: 16),
-                        // 烹饪步骤
-                        _SectionHeader(emoji: '👨‍🍳', title: '烹饪步骤'),
-                        const SizedBox(height: 10),
-                        if (!useTwoColumns)
-                          Column(children: [
-                            for (int i = 0; i < _steps.length; i++) ...[
-                              if (i > 0) const SizedBox(height: 10),
-                              _StepCard(index: i, step: _steps[i]),
-                            ],
-                          ])
-                        else
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(child: Column(children: [
-                                for (int i = 0; i < _steps.length; i += 2) ...[
-                                  if (i > 0) const SizedBox(height: 10),
-                                  _StepCard(index: i, step: _steps[i]),
-                                ],
-                              ])),
-                              const SizedBox(width: 10),
-                              Expanded(child: Column(children: [
-                                for (int i = 1; i < _steps.length; i += 2) ...[
-                                  if (i > 1) const SizedBox(height: 10),
-                                  _StepCard(index: i, step: _steps[i]),
-                                ],
-                              ])),
-                            ],
-                          ),
-                        const SizedBox(height: 20),
-                        // 底部操作按钮
-                        Row(children: [
-                          Expanded(child: ClayButton(
-                            onTap: _showLogDialog,
-                            color: AppColors.primarySoft,
-                            borderColor: AppColors.primaryLight,
-                            shadows: ClayShadow.raised(depth: 0.8),
-                            padding: const EdgeInsets.symmetric(vertical: 13),
-                            radius: 16,
-                            child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                              Icon(Icons.add_circle_outline_rounded, color: AppColors.primary, size: 18),
-                              SizedBox(width: 6),
-                              Text('记录这道菜', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.primary)),
-                            ]),
-                          )),
-                          const SizedBox(width: 12),
-                          Expanded(child: ClayButton(
-                            onTap: _showFeedbackDialog,
-                            color: AppColors.yellowSoft,
-                            borderColor: const Color(0xFFFFE599),
-                            shadows: ClayShadow.raised(
-                              darkColor: const Color(0x44D4A017),
-                              lightColor: const Color(0xBBFFFFFF),
-                            ),
-                            padding: const EdgeInsets.symmetric(vertical: 13),
-                            radius: 16,
-                            child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                              Icon(Icons.star_outline_rounded, color: Color(0xFFD4A017), size: 18),
-                              SizedBox(width: 6),
-                              Text('评价', style: TextStyle(fontWeight: FontWeight.w700, color: Color(0xFFD4A017))),
-                            ]),
-                          )),
-                        ]),
-                      ],
-                    );
-                  },
+                child: Text(
+                  item,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: SketchColors.textMain,
+                    fontWeight: FontWeight.w700,
+                    fontFamily: 'LXGWWenKai',
+                  ),
                 ),
+              )).toList(),
+            ),
+            const SizedBox(height: 20),
+            // 烹饪步骤
+            _SketchSectionHeader(emoji: '👨‍🍳', title: '烹饪步骤'),
+            const SizedBox(height: 12),
+            if (!isWide)
+              Column(children: [
+                for (int i = 0; i < _steps.length; i++) ...[
+                  if (i > 0) const SizedBox(height: 14),
+                  _SketchStepCard(index: i, step: _steps[i]),
+                ],
+              ])
+            else
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(child: Column(children: [
+                    for (int i = 0; i < _steps.length; i += 2) ...[
+                      if (i > 0) const SizedBox(height: 14),
+                      _SketchStepCard(index: i, step: _steps[i]),
+                    ],
+                  ])),
+                  const SizedBox(width: 14),
+                  Expanded(child: Column(children: [
+                    for (int i = 1; i < _steps.length; i += 2) ...[
+                      if (i > 1) const SizedBox(height: 14),
+                      _SketchStepCard(index: i, step: _steps[i]),
+                    ],
+                  ])),
+                ],
+              ),
+            const SizedBox(height: 24),
+            // 底部操作按钮
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                JellyButton(
+                  onTap: _showLogDialog,
+                  child: const Text('📝 记录这道菜'),
+                ),
+                const SizedBox(width: 16),
+                JellyButton(
+                  onTap: _showFeedbackDialog,
+                  child: const Text('⭐ 评价'),
+                ),
+              ],
+            ),
+          ],
+        );
+      },
     );
   }
 }
 
-class _InfoChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
+// ══════════════════════════════════════════════════════════════
+// 手绘风子组件
+// ══════════════════════════════════════════════════════════════
 
-  const _InfoChip({required this.icon, required this.label, required this.color});
+/// 手绘风顶栏图标按钮
+class _SketchIconBtn extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+  final bool active;
+
+  const _SketchIconBtn({required this.icon, required this.onTap, this.active = false});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: active ? const Color(0xFFFFF0F0) : Colors.white,
+          border: Border.all(color: SketchColors.lineBrown, width: 2),
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(10),
+            topRight: Radius.circular(16),
+            bottomRight: Radius.circular(8),
+            bottomLeft: Radius.circular(14),
+          ),
+          boxShadow: const [
+            BoxShadow(color: Color(0x1A8D6E63), offset: Offset(3, 3), blurRadius: 0),
+          ],
+        ),
+        child: Icon(icon, size: 20, color: active ? const Color(0xFFE57373) : SketchColors.lineBrown),
+      ),
+    );
+  }
+}
+
+/// 手绘风信息标签
+class _SketchInfoChip extends StatelessWidget {
+  final String emoji;
+  final String label;
+
+  const _SketchInfoChip({required this.emoji, required this.label});
 
   @override
   Widget build(BuildContext context) {
     return Row(mainAxisSize: MainAxisSize.min, children: [
-      Icon(icon, size: 15, color: color),
+      Text(emoji, style: const TextStyle(fontSize: 15)),
       const SizedBox(width: 4),
-      Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: color)),
+      Text(label, style: const TextStyle(
+        fontSize: 14,
+        fontWeight: FontWeight.w700,
+        color: SketchColors.textMain,
+        fontFamily: 'LXGWWenKai',
+      )),
     ]);
   }
 }
 
-class _SectionHeader extends StatelessWidget {
+/// 手绘风区块标题
+class _SketchSectionHeader extends StatelessWidget {
   final String emoji;
   final String title;
 
-  const _SectionHeader({required this.emoji, required this.title});
+  const _SketchSectionHeader({required this.emoji, required this.title});
 
   @override
   Widget build(BuildContext context) {
     return Row(children: [
-      Text(emoji, style: const TextStyle(fontSize: 18)),
+      Text(emoji, style: const TextStyle(fontSize: 20)),
       const SizedBox(width: 8),
-      Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textDark)),
+      Text(title, style: const TextStyle(
+        fontSize: 18,
+        fontWeight: FontWeight.w900,
+        color: SketchColors.textMain,
+        fontFamily: 'LXGWWenKai',
+      )),
     ]);
   }
 }
 
-class _StepCard extends StatelessWidget {
+/// 手绘风步骤卡片 — 虚线边框 + 微倾斜 + 偏移阴影
+class _SketchStepCard extends StatelessWidget {
   final int index;
   final RecipeStep step;
 
-  const _StepCard({required this.index, required this.step});
+  const _SketchStepCard({required this.index, required this.step});
+
+  // 每张卡片微倾斜角度交替
+  static const _rotations = [-0.8, 0.6, -0.4, 0.9, -0.5, 0.7];
 
   @override
   Widget build(BuildContext context) {
     final panels = <Widget>[];
     if (step.resultDescription.isNotEmpty) {
-      panels.add(_StepInfoPanel(
+      panels.add(_SketchInfoPanel(
         title: '完成标准',
-        icon: Icons.check_circle_outline_rounded,
-        color: AppColors.green,
-        bgColor: AppColors.greenSoft,
-        borderColor: AppColors.greenLight,
+        emoji: '✅',
+        bgColor: SketchColors.greenLight,
         description: step.resultDescription,
         imageUrl: step.resultImageUrl,
       ));
     }
     if (step.processDescription.isNotEmpty) {
-      panels.add(_StepInfoPanel(
+      panels.add(_SketchInfoPanel(
         title: '操作要点',
-        icon: Icons.info_outline_rounded,
-        color: AppColors.blue,
-        bgColor: AppColors.blueSoft,
-        borderColor: AppColors.blue.withOpacity(0.3),
+        emoji: '💡',
+        bgColor: const Color(0xFFFFF8E8),
         description: step.processDescription,
         imageUrl: step.processImageUrl,
       ));
     }
 
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.bgCard,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.border, width: 3),
-        boxShadow: ClayShadow.raised(),
-      ),
-      padding: const EdgeInsets.all(14),
+    final rot = _rotations[index % _rotations.length];
+
+    return HandDrawnCard(
+      rotation: rot,
+      hoverRotation: 0,
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(children: [
+            // 步骤编号 — 手绘圆圈
             Container(
-              width: 28, height: 28,
+              width: 32, height: 32,
               decoration: BoxDecoration(
-                color: AppColors.primarySoft,
-                borderRadius: BorderRadius.circular(9),
-                border: Border.all(color: AppColors.primaryLight, width: 1.5),
+                color: SketchColors.accentSoft,
+                shape: BoxShape.circle,
+                border: Border.all(color: SketchColors.lineBrown, width: 2.5),
               ),
               child: Center(
                 child: Text('${index + 1}',
-                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.primary)),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
+                    color: SketchColors.textMain,
+                    fontFamily: 'LXGWWenKai',
+                  )),
               ),
             ),
             const SizedBox(width: 10),
             Expanded(
               child: Text(step.step,
-                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppColors.textDark)),
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14,
+                  color: SketchColors.textMain,
+                  fontFamily: 'LXGWWenKai',
+                  height: 1.5,
+                )),
             ),
           ]),
           if (panels.isNotEmpty) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             LayoutBuilder(builder: (context, constraints) {
               final split = panels.length > 1 && constraints.maxWidth >= 520;
               if (!split) {
@@ -556,21 +668,18 @@ class _StepCard extends StatelessWidget {
   }
 }
 
-class _StepInfoPanel extends StatelessWidget {
+/// 手绘风步骤信息面板
+class _SketchInfoPanel extends StatelessWidget {
   final String title;
-  final IconData icon;
-  final Color color;
+  final String emoji;
   final Color bgColor;
-  final Color borderColor;
   final String description;
   final String? imageUrl;
 
-  const _StepInfoPanel({
+  const _SketchInfoPanel({
     required this.title,
-    required this.icon,
-    required this.color,
+    required this.emoji,
     required this.bgColor,
-    required this.borderColor,
     required this.description,
     this.imageUrl,
   });
@@ -581,30 +690,107 @@ class _StepInfoPanel extends StatelessWidget {
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: bgColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: borderColor, width: 1.5),
+        border: Border.all(color: SketchColors.lineBrown.withOpacity(0.4), width: 1.5),
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(8),
+          topRight: Radius.circular(16),
+          bottomRight: Radius.circular(6),
+          bottomLeft: Radius.circular(12),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Icon(icon, size: 15, color: color),
+          Row(children: [
+            Text(emoji, style: const TextStyle(fontSize: 14)),
             const SizedBox(width: 6),
-            Expanded(child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w700)),
-                const SizedBox(height: 2),
-                Text(description, style: const TextStyle(fontSize: 13, color: AppColors.textDark, height: 1.5)),
-              ],
+            Text(title, style: const TextStyle(
+              fontSize: 12,
+              color: SketchColors.textMain,
+              fontWeight: FontWeight.w800,
+              fontFamily: 'LXGWWenKai',
             )),
           ]),
+          const SizedBox(height: 4),
+          Text(description, style: TextStyle(
+            fontSize: 13,
+            color: SketchColors.textMain.withOpacity(0.8),
+            height: 1.5,
+            fontFamily: 'LXGWWenKai',
+          )),
           if (imageUrl != null) ...[
             const SizedBox(height: 8),
             _ProxiedImage(url: imageUrl!, height: 160),
           ],
         ],
       ),
+    );
+  }
+}
+
+/// 手绘风加载动画
+class _SketchLoadingDots extends StatefulWidget {
+  const _SketchLoadingDots();
+
+  @override
+  State<_SketchLoadingDots> createState() => _SketchLoadingDotsState();
+}
+
+class _SketchLoadingDotsState extends State<_SketchLoadingDots>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 900))
+      ..repeat();
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        AnimatedBuilder(
+          animation: _ctrl,
+          builder: (_, __) => Row(
+            mainAxisSize: MainAxisSize.min,
+            children: List.generate(3, (i) {
+              final t = ((_ctrl.value - i / 3) % 1.0 + 1.0) % 1.0;
+              final scale = 0.6 + 0.4 * (t < 0.5 ? t * 2 : (1 - t) * 2);
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Transform.scale(
+                  scale: scale,
+                  child: Container(
+                    width: 12, height: 12,
+                    decoration: BoxDecoration(
+                      color: SketchColors.lineBrown.withOpacity(0.3 + 0.7 * scale),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: SketchColors.lineBrown, width: 1.5),
+                    ),
+                  ),
+                ),
+              );
+            }),
+          ),
+        ),
+        const SizedBox(height: 14),
+        Text('AI 正在生成步骤详情...',
+          style: TextStyle(
+            color: SketchColors.textMain.withOpacity(0.6),
+            fontSize: 14,
+            fontFamily: 'LXGWWenKai',
+          )),
+      ],
     );
   }
 }
@@ -638,18 +824,27 @@ class _ProxiedImageState extends State<_ProxiedImage> {
   Widget build(BuildContext context) {
     if (_proxyUrl == null) {
       return SizedBox(height: widget.height,
-          child: const Center(child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary)));
+          child: const Center(child: CircularProgressIndicator(strokeWidth: 2, color: SketchColors.lineBrown)));
     }
     return ClipRRect(
       borderRadius: BorderRadius.circular(10),
-      child: Image.network(
-        _proxyUrl!,
-        width: double.infinity,
-        height: widget.height,
-        fit: BoxFit.contain,
-        errorBuilder: (_, __, ___) => SizedBox(
-          height: widget.height,
-          child: const Center(child: Icon(Icons.broken_image_rounded, color: AppColors.textLight, size: 32)),
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border.all(color: SketchColors.lineBrown.withOpacity(0.3), width: 1.5),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(8.5),
+          child: Image.network(
+            _proxyUrl!,
+            width: double.infinity,
+            height: widget.height,
+            fit: BoxFit.contain,
+            errorBuilder: (_, __, ___) => SizedBox(
+              height: widget.height,
+              child: const Center(child: Icon(Icons.broken_image_rounded, color: SketchColors.lineBrown, size: 32)),
+            ),
+          ),
         ),
       ),
     );

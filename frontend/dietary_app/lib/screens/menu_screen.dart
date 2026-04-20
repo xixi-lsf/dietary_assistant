@@ -511,55 +511,105 @@ class _MenuScreenState extends State<MenuScreen> {
                     const SizedBox(height: 12),
                   ],
 
-                  // 反馈卡
-                  ClayCard(
-                    padding: const EdgeInsets.all(18),
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Row(children: [
-                        Container(
-                          width: 32, height: 32,
-                          decoration: BoxDecoration(
-                            color: AppColors.bg,
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: AppColors.border, width: 2.5),
-                            boxShadow: ClayShadow.raised(depth: 0.6),
+                  // 反馈卡 — 手绘风
+                  CustomPaint(
+                    foregroundPainter: DashedBorderPainter(
+                      color: SketchColors.lineBrown,
+                      strokeWidth: 2.5,
+                      dashWidth: 8,
+                      dashSpace: 5,
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.elliptical(30, 15),
+                        topRight: Radius.elliptical(12, 35),
+                        bottomRight: Radius.elliptical(35, 12),
+                        bottomLeft: Radius.elliptical(15, 30),
+                      ),
+                      wobble: 1.2,
+                    ),
+                    child: Container(
+                      padding: const EdgeInsets.all(18),
+                      decoration: BoxDecoration(
+                        color: SketchColors.bg,
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.elliptical(30, 15),
+                          topRight: Radius.elliptical(12, 35),
+                          bottomRight: Radius.elliptical(35, 12),
+                          bottomLeft: Radius.elliptical(15, 30),
+                        ),
+                        boxShadow: const [
+                          BoxShadow(color: Color(0x1A8D6E63), offset: Offset(8, 8), blurRadius: 0),
+                        ],
+                      ),
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Row(children: [
+                          const Text('✏️', style: TextStyle(fontSize: 18)),
+                          const SizedBox(width: 8),
+                          const Text('不够满意？再改一版',
+                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: SketchColors.textMain)),
+                        ]),
+                        const SizedBox(height: 12),
+                        CustomPaint(
+                          foregroundPainter: DashedBorderPainter(
+                            color: SketchColors.lineBrown.withOpacity(0.4),
+                            strokeWidth: 1.5,
+                            dashWidth: 6,
+                            dashSpace: 4,
+                            borderRadius: BorderRadius.circular(12),
+                            wobble: 0.6,
                           ),
-                          child: const Icon(Icons.rate_review_rounded, color: AppColors.textMid, size: 16),
+                          child: TextField(
+                            controller: _feedbackCtrl,
+                            style: const TextStyle(fontSize: 14, color: SketchColors.textMain),
+                            decoration: InputDecoration(
+                              hintText: '比如：不要重复、想吃牛肉、主食换成更清淡的',
+                              hintStyle: TextStyle(color: SketchColors.lineBrown.withOpacity(0.4), fontSize: 13),
+                              filled: true,
+                              fillColor: Colors.white,
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                              isDense: true,
+                            ),
+                            maxLines: 2,
+                          ),
                         ),
-                        const SizedBox(width: 10),
-                        const Text('不够满意？再改一版',
-                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.textDark)),
+                        const SizedBox(height: 12),
+                        GestureDetector(
+                          onTap: () {
+                            final fb = _feedbackCtrl.text;
+                            _feedbackCtrl.clear();
+                            _recommend(feedback: fb);
+                          },
+                          child: CustomPaint(
+                            foregroundPainter: DashedBorderPainter(
+                              color: SketchColors.lineBrown,
+                              strokeWidth: 2,
+                              dashWidth: 8,
+                              dashSpace: 4,
+                              borderRadius: BorderRadius.circular(20),
+                              wobble: 0.8,
+                            ),
+                            child: Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF0F9F0),
+                                borderRadius: BorderRadius.circular(20),
+                                boxShadow: [
+                                  BoxShadow(color: SketchColors.lineBrown.withOpacity(0.12), offset: const Offset(4, 4), blurRadius: 0),
+                                ],
+                              ),
+                              child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                                Icon(Icons.refresh_rounded, size: 16, color: SketchColors.textMain),
+                                SizedBox(width: 6),
+                                Text('重新推荐', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: SketchColors.textMain)),
+                              ]),
+                            ),
+                          ),
+                        ),
                       ]),
-                      const SizedBox(height: 10),
-                      TextField(
-                        controller: _feedbackCtrl,
-                        decoration: const InputDecoration(
-                          hintText: '比如：不要重复、想吃牛肉、主食换成更清淡的',
-                        ),
-                        maxLines: 2,
-                      ),
-                      const SizedBox(height: 10),
-                      ClayButton(
-                        onTap: () {
-                          final fb = _feedbackCtrl.text;
-                          _feedbackCtrl.clear();
-                          _recommend(feedback: fb);
-                        },
-                        color: AppColors.bg,
-                        borderColor: AppColors.border,
-                        shadows: ClayShadow.raised(depth: 0.7),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        radius: 14,
-                        child: const SizedBox(
-                          width: double.infinity,
-                          child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                            Icon(Icons.refresh_rounded, size: 16, color: AppColors.textMid),
-                            SizedBox(width: 6),
-                            Text('重新推荐', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.textMid)),
-                          ]),
-                        ),
-                      ),
-                    ]),
+                    ),
                   ),
                 ],
               ],

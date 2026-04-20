@@ -1,4 +1,6 @@
+import 'dart:js_interop';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:web/web.dart' as web;
 
 class ApiConfig {
   static const _storage = FlutterSecureStorage();
@@ -12,9 +14,23 @@ class ApiConfig {
 
   static const defaultBaseUrl = 'http://localhost:8000';
 
+  /// 从 web/env.js 中读取 APP_CONFIG.API_BASE_URL
+  static String _getEnvBaseUrl() {
+    try {
+      final config = (web.window as JSObject).getProperty('APP_CONFIG'.toJS);
+      if (config != null && config.isA<JSObject>()) {
+        final url = (config as JSObject).getProperty('API_BASE_URL'.toJS);
+        if (url != null && url.isA<JSString>()) {
+          return (url as JSString).toDart;
+        }
+      }
+    } catch (_) {}
+    return defaultBaseUrl;
+  }
+
   static Future<String> getBaseUrl() async {
     final stored = await _storage.read(key: _keyBaseUrl);
-    if (stored == null || stored == 'http://10.0.2.2:8000') return defaultBaseUrl;
+    if (stored == null || stored == 'http://10.0.2.2:8000') return _getEnvBaseUrl();
     return stored;
   }
   static Future<void> setBaseUrl(String url) async => _storage.write(key: _keyBaseUrl, value: url);
