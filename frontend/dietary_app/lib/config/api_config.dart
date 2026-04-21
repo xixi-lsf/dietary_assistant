@@ -31,7 +31,7 @@ class ApiConfig {
 
   static Future<String> getBaseUrl() async {
     final stored = await _storage.read(key: _keyBaseUrl);
-    if (stored == null || stored == 'http://10.0.2.2:8000') return _getEnvBaseUrl();
+    if (stored == null || stored == 'http://10.0.2.2:8000' || stored == defaultBaseUrl) return _getEnvBaseUrl();
     return stored;
   }
   static Future<void> setBaseUrl(String url) async => _storage.write(key: _keyBaseUrl, value: url);
