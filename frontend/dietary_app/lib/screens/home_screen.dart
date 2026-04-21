@@ -46,13 +46,22 @@ class _HomeScreenState extends State<HomeScreen> {
       final today = DateTime.now().toIso8601String().substring(0, 10);
       final apiKey = await ApiConfig.getApiKey();
       final aiBaseUrl = await ApiConfig.getAiBaseUrl();
+      final aiModel = await ApiConfig.getAiModel();
+      if (apiKey == null || apiKey.isEmpty || aiBaseUrl == null || aiBaseUrl.isEmpty || aiModel == null || aiModel.isEmpty) {
+        setState(() {
+          _advice = '请先在设置中配置 API Key、Base URL 和模型名称';
+          _adviceLoading = false;
+        });
+        return;
+      }
       final profile = await ApiService.get('/user/profile');
       final cycleDays = profile['cycle_days'] ?? 7;
       final data = await ApiService.post('/ai/diet-advice', {
         'date': today,
         'cycle_days': cycleDays,
-        if (apiKey != null && apiKey.isNotEmpty) 'api_key': apiKey,
-        if (aiBaseUrl != null && aiBaseUrl.isNotEmpty) 'ai_base_url': aiBaseUrl,
+        'api_key': apiKey,
+        'ai_base_url': aiBaseUrl,
+        'ai_model': aiModel,
       });
       setState(() {
         _advice = data['advice'];

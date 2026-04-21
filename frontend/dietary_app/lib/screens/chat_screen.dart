@@ -324,6 +324,14 @@ class _ChatScreenState extends State<ChatScreen> {
       final apiKey = await ApiConfig.getApiKey();
       final aiBaseUrl = await ApiConfig.getAiBaseUrl();
       final aiModel = await ApiConfig.getAiModel();
+      if (apiKey == null || apiKey.isEmpty || aiBaseUrl == null || aiBaseUrl.isEmpty || aiModel == null || aiModel.isEmpty) {
+        setState(() {
+          _current.messages.add(ChatMessage(text: '当前无可用模型，请先在设置中配置 API Key、Base URL 和模型名称', isUser: false));
+          _sending = false;
+        });
+        _scrollToBottom();
+        return;
+      }
       final history = _current.messages
           .take(_current.messages.length - 1)
           .map((m) => {

@@ -187,6 +187,7 @@ def recommend_banquet(req: BanquetRequest):
             preferences=req.preferences,
             dietary_restrictions=req.dietary_restrictions,
             base_url=req.ai_base_url,
+            model=req.ai_model,
         )
         recipes = ai_service.attach_recipe_preview_images(
             recipes,

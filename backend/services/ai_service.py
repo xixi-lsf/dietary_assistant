@@ -4,29 +4,40 @@ import time as _time
 
 import httpx
 
-DEFAULT_AI_BASE_URL = "https://codeapi.icu/v1/messages"
-DEFAULT_MODEL = "claude-sonnet-4-6"
-
 _MAX_RETRIES = 3
 _RETRY_BACKOFF = [5, 15, 30]  # 每次重试等待秒数
 
 
-def _post(api_key: str, base_url: str, payload: dict) -> dict:
+def _post(api_key: str, base_url: str, payload: dict) -> str:
+    """发送 OpenAI 兼容格式请求，返回纯文本内容"""
+    if not api_key or not base_url:
+        raise ValueError("未配置 API Key 或 Base URL，请先在设置中配置")
+    if not payload.get("model"):
+        raise ValueError("未配置模型名称，请先在设置中配置")
     url = base_url.rstrip('/')
     headers = {
-        'x-api-key': api_key,
-        'anthropic-version': '2023-06-01',
+        'Authorization': f'Bearer {api_key}',
         'Content-Type': 'application/json',
     }
+    # 将 system 字段转为 messages 首条
+    messages = list(payload.get("messages", []))
+    if "system" in payload:
+        messages.insert(0, {"role": "system", "content": payload["system"]})
+    body = {
+        "model": payload["model"],
+        "max_tokens": payload.get("max_tokens", 2048),
+        "messages": messages,
+    }
     for attempt in range(_MAX_RETRIES + 1):
-        r = httpx.post(url, headers=headers, json=payload, timeout=120)
+        r = httpx.post(url, headers=headers, json=body, timeout=120)
         if r.status_code == 429 and attempt < _MAX_RETRIES:
             wait = _RETRY_BACKOFF[attempt]
             print(f"[AI] 429 限流，{wait}s 后重试 ({attempt+1}/{_MAX_RETRIES})")
             _time.sleep(wait)
             continue
         r.raise_for_status()
-        return r.json()
+        data = r.json()
+        return data["choices"][0]["message"]["content"].strip()
 
 
 def recommend_recipes(
@@ -140,13 +151,13 @@ def recommend_recipes(
 6. 若用户有热量限制，确保任意菜+主食组合不超过该限制
 7. nutrition数据要准确，单位kcal/g"""
 
-    data = _post(api_key, base_url or DEFAULT_AI_BASE_URL, {
-        "model": model or DEFAULT_MODEL,
+    data = _post(api_key, base_url, {
+        "model": model,
         "max_tokens": 2048,
         "messages": [{"role": "user", "content": prompt}],
     })
 
-    text = data["content"][0]["text"].strip()
+    text = data
     if text.startswith("```"):
         text = text.split("```")[1]
         if text.startswith("json"):
@@ -182,13 +193,13 @@ def generate_recipe_detail(
 
 以JSON数组格式返回，只返回JSON，不要其他文字。"""
 
-    data = _post(api_key, base_url or DEFAULT_AI_BASE_URL, {
-        "model": model or DEFAULT_MODEL,
+    data = _post(api_key, base_url, {
+        "model": model,
         "max_tokens": 3000,
         "messages": [{"role": "user", "content": prompt}],
     })
 
-    text = data["content"][0]["text"].strip()
+    text = data
     if text.startswith("```"):
         text = text.split("```")[1]
         if text.startswith("json"):
@@ -260,13 +271,13 @@ def recommend_banquet(
 
 只返回JSON，不要其他文字。"""
 
-    data = _post(api_key, base_url or DEFAULT_AI_BASE_URL, {
-        "model": model or DEFAULT_MODEL,
+    data = _post(api_key, base_url, {
+        "model": model,
         "max_tokens": 3000,
         "messages": [{"role": "user", "content": prompt}],
     })
 
-    text = data["content"][0]["text"].strip()
+    text = data
     if text.startswith("```"):
         text = text.split("```")[1]
         if text.startswith("json"):
@@ -316,13 +327,13 @@ def generate_diet_advice(
 
 语气要温柔可爱，像朋友一样，避免使用"严重不足""严重超标"等打击性词汇。每部分不超过100字。"""
 
-    data = _post(api_key, base_url or DEFAULT_AI_BASE_URL, {
-        "model": model or DEFAULT_MODEL,
+    data = _post(api_key, base_url, {
+        "model": model,
         "max_tokens": 600,
         "messages": [{"role": "user", "content": prompt}],
     })
 
-    return {"advice": data["content"][0]["text"].strip()}
+    return {"advice": data}
 
 
 def extract_feedback_tags(
@@ -342,13 +353,13 @@ def extract_feedback_tags(
 以简短的中文标签形式返回，多个标签用逗号分隔，不超过30字。
 只返回标签，不要其他文字。"""
 
-    data = _post(api_key, base_url or DEFAULT_AI_BASE_URL, {
-        "model": model or DEFAULT_MODEL,
+    data = _post(api_key, base_url, {
+        "model": model,
         "max_tokens": 100,
         "messages": [{"role": "user", "content": prompt}],
     })
 
-    return data["content"][0]["text"].strip()
+    return data
 
 
 def _submit_image_task(image_api_key: str, prompt: str) -> str | None:
@@ -455,19 +466,17 @@ def attach_recipe_preview_images(
 def identify_ingredients(api_key: str, image_bytes: bytes, media_type: str = "image/jpeg", base_url: str = None, model: str = None) -> list[str]:
     image_data = base64.standard_b64encode(image_bytes).decode("utf-8")
 
-    data = _post(api_key, base_url or DEFAULT_AI_BASE_URL, {
-        "model": model or DEFAULT_MODEL,
+    data = _post(api_key, base_url, {
+        "model": model,
         "max_tokens": 512,
         "messages": [
             {
                 "role": "user",
                 "content": [
                     {
-                        "type": "image",
-                        "source": {
-                            "type": "base64",
-                            "media_type": media_type,
-                            "data": image_data,
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:{media_type};base64,{image_data}",
                         },
                     },
                     {
@@ -479,7 +488,7 @@ def identify_ingredients(api_key: str, image_bytes: bytes, media_type: str = "im
         ],
     })
 
-    text = data["content"][0]["text"].strip()
+    text = data
     if text.startswith("```"):
         text = text.split("```")[1]
         if text.startswith("json"):
@@ -503,10 +512,10 @@ def chat(
             messages.append({"role": role, "content": content})
     messages.append({"role": "user", "content": message})
 
-    data = _post(api_key, base_url or DEFAULT_AI_BASE_URL, {
-        "model": model or DEFAULT_MODEL,
+    data = _post(api_key, base_url, {
+        "model": model,
         "max_tokens": 1024,
         "system": system_prompt,
         "messages": messages,
     })
-    return data["content"][0]["text"].strip()
+    return data

@@ -472,7 +472,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       children: [
         _sketchField(_baseUrlCtrl, '后端地址', hint: 'http://localhost:8000'),
         _sketchField(_apiKeyCtrl, 'AI API Key', obscure: true),
-        _sketchField(_aiBaseUrlCtrl, 'AI Base URL（代理时填写）', hint: 'https://codeapi.icu'),
+        _sketchField(_aiBaseUrlCtrl, 'AI Base URL', hint: 'https://api.deepseek.com/v1/chat/completions'),
         _sketchField(_aiModelCtrl, 'AI 模型名称', hint: 'deepseek-chat, claude-sonnet-4-6 等'),
       ],
     );

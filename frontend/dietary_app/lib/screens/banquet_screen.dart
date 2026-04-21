@@ -48,6 +48,15 @@ class _BanquetScreenState extends State<BanquetScreen> {
     try {
       final apiKey = await ApiConfig.getApiKey();
       final aiBaseUrl = await ApiConfig.getAiBaseUrl();
+      final aiModel = await ApiConfig.getAiModel();
+      if (apiKey == null || apiKey.isEmpty || aiBaseUrl == null || aiBaseUrl.isEmpty || aiModel == null || aiModel.isEmpty) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('当前无可用模型，请先在设置中配置 API Key、Base URL 和模型名称')),
+        );
+        setState(() => _loading = false);
+        return;
+      }
       final imageApiKey = await ApiConfig.getImageApiKey();
       final imageBaseUrl = await ApiConfig.getImageBaseUrl();
       final data = await ApiService.post('/recipes/banquet', {
@@ -55,8 +64,9 @@ class _BanquetScreenState extends State<BanquetScreen> {
         'occasion': _customOccasion ? _customOccasionCtrl.text : _occasion,
         'preferences': _prefsCtrl.text,
         'dietary_restrictions': _restrictCtrl.text,
-        if (apiKey != null && apiKey.isNotEmpty) 'api_key': apiKey,
-        if (aiBaseUrl != null && aiBaseUrl.isNotEmpty) 'ai_base_url': aiBaseUrl,
+        'api_key': apiKey,
+        'ai_base_url': aiBaseUrl,
+        'ai_model': aiModel,
         if (imageApiKey != null && imageApiKey.isNotEmpty)
           'image_api_key': imageApiKey,
         if (imageBaseUrl != null && imageBaseUrl.isNotEmpty)

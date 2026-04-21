@@ -202,6 +202,7 @@ class BanquetRequest(BaseModel):
     dietary_restrictions: str = ""
     api_key: Optional[str] = None
     ai_base_url: Optional[str] = None
+    ai_model: Optional[str] = None
     image_api_key: Optional[str] = None
     image_base_url: Optional[str] = None
 

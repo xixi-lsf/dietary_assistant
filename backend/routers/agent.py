@@ -10,9 +10,8 @@ from backend.database import get_db
 from backend.models import UserProfile, Ingredient, NutritionLog, UserMemory
 from backend.services.tool_service import TOOL_SCHEMAS, execute_tool
 from backend.services import ai_service
-from backend.services.ai_service import DEFAULT_AI_BASE_URL
 
-#tools calling,使用claudeAPI的工具调用能力，让AI可以自助调用后端工具来完成对话和菜单推荐任务
+#tools calling，使用 OpenAI 兼容格式的工具调用能力
 
 router = APIRouter(prefix="/agent", tags=["agent"])
 
@@ -30,30 +29,68 @@ class AgentChatRequest(BaseModel):
     weather_api_key: Optional[str] = None
     serper_api_key: Optional[str] = None
 
-#向 Claude API（兼容端点）发送请求（APIKEY,base_url,历史对话，系统提示词，重试次数）
+#向 OpenAI 兼容端点发送请求（含工具调用）
 async def _post_with_tools(api_key: str, base_url: str, messages: list, system: str, model: str = None, retries: int = 3) -> dict:
+    """发送 OpenAI 兼容格式请求，返回统一的内部格式"""
+    if not api_key or not base_url:
+        raise ValueError("未配置 API Key 或 Base URL，请先在设置中配置")
+    if not model:
+        raise ValueError("未配置模型名称，请先在设置中配置")
     import asyncio
-    from backend.services.ai_service import DEFAULT_MODEL
-    url = base_url.rstrip("/") + "/v1/messages"
+    url = base_url.rstrip("/")
     headers = {
-        "x-api-key": api_key,
-        "anthropic-version": "2023-06-01",
+        "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
     }
 
+    # 构建 messages：system 放首条
+    all_messages = [{"role": "system", "content": system}]
+    for m in messages:
+        content = m.get("content", "")
+        role = m.get("role", "user")
+
+        if role == "assistant" and isinstance(content, list):
+            # 内部 content_blocks → OpenAI assistant message
+            text_parts = []
+            tool_calls_out = []
+            for block in content:
+                if isinstance(block, dict):
+                    if block.get("type") == "text":
+                        text_parts.append(block.get("text", ""))
+                    elif block.get("type") == "tool_use":
+                        tool_calls_out.append({
+                            "id": block["id"],
+                            "type": "function",
+                            "function": {
+                                "name": block["name"],
+                                "arguments": json.dumps(block.get("input", {}), ensure_ascii=False),
+                            },
+                        })
+            msg = {"role": "assistant", "content": "\n".join(text_parts) or None}
+            if tool_calls_out:
+                msg["tool_calls"] = tool_calls_out
+            all_messages.append(msg)
+
+        elif role == "user" and isinstance(content, list):
+            # 内部 tool_result blocks → OpenAI tool messages
+            for block in content:
+                if isinstance(block, dict) and block.get("type") == "tool_result":
+                    all_messages.append({
+                        "role": "tool",
+                        "tool_call_id": block["tool_use_id"],
+                        "content": block.get("content", ""),
+                    })
+        else:
+            all_messages.append({"role": role, "content": content})
+
     payload = {
-        "model": model or DEFAULT_MODEL,
+        "model": model,
         "max_tokens": 2048,
-        "system": system,
         "tools": TOOL_SCHEMAS,
-        "messages": messages,
+        "messages": all_messages,
     }
 
-    print(f"[Agent] payload messages count={len(messages)}, system len={len(system)}, tools count={len(TOOL_SCHEMAS)}")
-    for i, m in enumerate(messages):
-        content = m.get("content", "")
-        content_preview = str(content)[:200] if content else "EMPTY"
-        print(f"[Agent] msg[{i}] role={m.get('role')} content_type={type(content).__name__} preview={content_preview}")
+    print(f"[Agent] payload messages count={len(all_messages)}, system len={len(system)}, tools count={len(TOOL_SCHEMAS)}")
 
     retry_backoff = [5, 15, 30]
     last_err = None
@@ -69,7 +106,37 @@ async def _post_with_tools(api_key: str, base_url: str, messages: list, system: 
             if r.status_code >= 400:
                 print(f"[Agent] API 错误 {r.status_code}: {r.text[:500]}")
             r.raise_for_status()
-            return r.json()
+            data = r.json()
+
+            # 将 OpenAI 响应转为内部统一格式
+            choice = data["choices"][0]
+            finish_reason = choice.get("finish_reason", "stop")
+            message = choice.get("message", {})
+
+            # 映射 stop_reason
+            stop_reason = "tool_use" if finish_reason == "tool_calls" else "end_turn"
+
+            # 构建内部 content_blocks
+            content_blocks = []
+            if message.get("content"):
+                content_blocks.append({"type": "text", "text": message["content"]})
+            if message.get("tool_calls"):
+                for tc in message["tool_calls"]:
+                    fn = tc.get("function", {})
+                    args = fn.get("arguments", "{}")
+                    try:
+                        parsed_args = json.loads(args)
+                    except json.JSONDecodeError:
+                        parsed_args = {}
+                    content_blocks.append({
+                        "type": "tool_use",
+                        "id": tc["id"],
+                        "name": fn.get("name", ""),
+                        "input": parsed_args,
+                    })
+
+            return {"stop_reason": stop_reason, "content": content_blocks}
+
         except (httpx.RemoteProtocolError, httpx.ConnectError, httpx.ReadError) as e:
             last_err = e
             if attempt < retries:
@@ -139,7 +206,7 @@ async def agent_chat(req: AgentChatRequest, db: Session = Depends(get_db)):
             #这里面就包含了tool需要的参数字段和其他（比如stop_reason）必要字段
             response = await _post_with_tools(
                 api_key=req.api_key,
-                base_url=req.ai_base_url or DEFAULT_AI_BASE_URL,
+                base_url=req.ai_base_url,
                 messages=messages,
                 system=system_prompt,
                 model=req.ai_model,
@@ -314,7 +381,7 @@ async def agent_recommend(req: AgentRecommendRequest, db: Session = Depends(get_
         try:
             response = await _post_with_tools(
                 api_key=req.api_key,
-                base_url=req.ai_base_url or DEFAULT_AI_BASE_URL,
+                base_url=req.ai_base_url,
                 messages=messages,
                 system=system_prompt,
                 model=req.ai_model,

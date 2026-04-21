@@ -15,125 +15,153 @@ from backend.models import Ingredient, NutritionLog, UserProfile, UserMemory
 
 TOOL_SCHEMAS = [
     {
-        "name": "get_fridge_contents",
-        "description": "获取冰箱中现有的食材列表。当需要根据现有食材推荐菜肴时调用。",
-        "input_schema": {
-            "type": "object",
-            #定义了该 object 中可以包含哪些属性
-            "properties": {
-                "category": {"type": "string", "description": "分类过滤：ingredient/seasoning/cookware，不填返回所有"}
+        "type": "function",
+        "function": {
+            "name": "get_fridge_contents",
+            "description": "获取冰箱中现有的食材列表。当需要根据现有食材推荐菜肴时调用。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "category": {"type": "string", "description": "分类过滤：ingredient/seasoning/cookware，不填返回所有"}
+                },
+                "required": [],
             },
-            #必须存在的属性名称
-            "required": [],
         },
     },
     {
-        "name": "get_nutrition_history",
-        "description": "查询用户最近 N 天的营养摄入记录。用于分析饮食趋势或判断今日摄入情况。",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "days": {"type": "integer", "description": "查询最近几天，默认7，最多30"},
-                "include_today": {"type": "boolean", "description": "是否包含今日，默认true"},
+        "type": "function",
+        "function": {
+            "name": "get_nutrition_history",
+            "description": "查询用户最近 N 天的营养摄入记录。用于分析饮食趋势或判断今日摄入情况。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "days": {"type": "integer", "description": "查询最近几天，默认7，最多30"},
+                    "include_today": {"type": "boolean", "description": "是否包含今日，默认true"},
+                },
+                "required": [],
             },
-            "required": [],
         },
     },
     {
-        "name": "get_user_memory",
-        "description": "读取用户长期记忆：口味偏好权重、硬约束（绝对不吃）、健康目标、偏好摘要。推荐前应先调用。",
-        "input_schema": {"type": "object", "properties": {}, "required": []},
-    },
-    {
-        "name": "update_user_preference",
-        "description": "更新用户长期记忆：新增/移除硬约束、设置健康目标、更新偏好摘要。",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "add_hard_constraint": {"type": "string", "description": "新增禁忌食材"},
-                "remove_hard_constraint": {"type": "string", "description": "移除禁忌食材"},
-                "set_health_goals": {"type": "array", "items": {"type": "string"}, "description": "设置健康目标列表"},
-                "set_preference_summary": {"type": "string", "description": "更新偏好文字摘要"},
-            },
-            "required": [],
+        "type": "function",
+        "function": {
+            "name": "get_user_memory",
+            "description": "读取用户长期记忆：口味偏好权重、硬约束（绝对不吃）、健康目标、偏好摘要。推荐前应先调用。",
+            "parameters": {"type": "object", "properties": {}, "required": []},
         },
     },
     {
-        "name": "log_meal",
-        "description": "将一餐记录到营养日志。当用户告知已吃了某道菜时调用。",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "recipe_name": {"type": "string", "description": "菜名"},
-                "meal_type": {"type": "string", "description": "breakfast/lunch/dinner/snack"},
-                "calories": {"type": "number", "description": "热量 kcal"},
-                "protein": {"type": "number", "description": "蛋白质 g"},
-                "carbs": {"type": "number", "description": "碳水 g"},
-                "fat": {"type": "number", "description": "脂肪 g"},
-                "fiber": {"type": "number", "description": "膳食纤维 g"},
+        "type": "function",
+        "function": {
+            "name": "update_user_preference",
+            "description": "更新用户长期记忆：新增/移除硬约束、设置健康目标、更新偏好摘要。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "add_hard_constraint": {"type": "string", "description": "新增禁忌食材"},
+                    "remove_hard_constraint": {"type": "string", "description": "移除禁忌食材"},
+                    "set_health_goals": {"type": "array", "items": {"type": "string"}, "description": "设置健康目标列表"},
+                    "set_preference_summary": {"type": "string", "description": "更新偏好文字摘要"},
+                },
+                "required": [],
             },
-            "required": ["recipe_name", "meal_type", "calories"],
         },
     },
     {
-        "name": "calculate_nutrition",
-        "description": "根据食材和份量估算营养素。用户询问某道菜热量时调用。",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "dish_name": {"type": "string", "description": "菜名"},
-                "servings": {"type": "number", "description": "份数，默认1"},
-                "ingredients": {"type": "array", "items": {"type": "string"}, "description": "食材列表如 [\"鸡胸肉200g\"]"},
+        "type": "function",
+        "function": {
+            "name": "log_meal",
+            "description": "将一餐记录到营养日志。当用户告知已吃了某道菜时调用。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "recipe_name": {"type": "string", "description": "菜名"},
+                    "meal_type": {"type": "string", "description": "breakfast/lunch/dinner/snack"},
+                    "calories": {"type": "number", "description": "热量 kcal"},
+                    "protein": {"type": "number", "description": "蛋白质 g"},
+                    "carbs": {"type": "number", "description": "碳水 g"},
+                    "fat": {"type": "number", "description": "脂肪 g"},
+                    "fiber": {"type": "number", "description": "膳食纤维 g"},
+                },
+                "required": ["recipe_name", "meal_type", "calories"],
             },
-            "required": ["dish_name"],
         },
     },
     {
-        "name": "explain_recommendation",
-        "description": "解释为什么推荐某道菜，引用用户记忆和饮食状态作为依据。",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "dish_name": {"type": "string", "description": "被推荐的菜名"},
-                "reasons": {"type": "array", "items": {"type": "string"}, "description": "推荐理由列表"},
+        "type": "function",
+        "function": {
+            "name": "calculate_nutrition",
+            "description": "根据食材和份量估算营养素。用户询问某道菜热量时调用。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "dish_name": {"type": "string", "description": "菜名"},
+                    "servings": {"type": "number", "description": "份数，默认1"},
+                    "ingredients": {"type": "array", "items": {"type": "string"}, "description": "食材列表如 [\"鸡胸肉200g\"]"},
+                },
+                "required": ["dish_name"],
             },
-            "required": ["dish_name", "reasons"],
         },
     },
     {
-        "name": "detect_conflict",
-        "description": "检测用户请求与长期记忆的冲突（口味冲突、营养目标冲突）。",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "user_request": {"type": "string", "description": "用户的当前请求"},
-                "check_taste": {"type": "boolean", "description": "是否检查口味冲突，默认true"},
-                "check_nutrition": {"type": "boolean", "description": "是否检查营养目标冲突，默认true"},
+        "type": "function",
+        "function": {
+            "name": "explain_recommendation",
+            "description": "解释为什么推荐某道菜，引用用户记忆和饮食状态作为依据。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "dish_name": {"type": "string", "description": "被推荐的菜名"},
+                    "reasons": {"type": "array", "items": {"type": "string"}, "description": "推荐理由列表"},
+                },
+                "required": ["dish_name", "reasons"],
             },
-            "required": ["user_request"],
         },
     },
     {
-        "name": "get_weather",
-        "description": "获取指定城市的当前天气，包括温度、天气状况、湿度。用于根据天气推荐合适的饮食（如雨天推荐热汤、高温推荐清淡）。",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "city": {"type": "string", "description": "城市名，英文或中文均可，如 Beijing、上海"},
+        "type": "function",
+        "function": {
+            "name": "detect_conflict",
+            "description": "检测用户请求与长期记忆的冲突（口味冲突、营养目标冲突）。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "user_request": {"type": "string", "description": "用户的当前请求"},
+                    "check_taste": {"type": "boolean", "description": "是否检查口味冲突，默认true"},
+                    "check_nutrition": {"type": "boolean", "description": "是否检查营养目标冲突，默认true"},
+                },
+                "required": ["user_request"],
             },
-            "required": ["city"],
         },
     },
     {
-        "name": "search_web",
-        "description": "搜索网页获取菜谱、食材营养、饮食知识等最新信息。当本地数据不足时调用，如搜索特定菜系做法、食材功效、流行饮食趋势。",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "query": {"type": "string", "description": "搜索关键词，如：番茄炒蛋做法、减脂期适合吃什么"},
-                "num_results": {"type": "integer", "description": "返回结果数量，默认3，最多5"},
+        "type": "function",
+        "function": {
+            "name": "get_weather",
+            "description": "获取指定城市的当前天气，包括温度、天气状况、湿度。用于根据天气推荐合适的饮食。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "city": {"type": "string", "description": "城市名，英文或中文均可，如 Beijing、上海"},
+                },
+                "required": ["city"],
             },
-            "required": ["query"],
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "search_web",
+            "description": "搜索网页获取菜谱、食材营养、饮食知识等最新信息。当本地数据不足时调用。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "搜索关键词，如：番茄炒蛋做法、减脂期适合吃什么"},
+                    "num_results": {"type": "integer", "description": "返回结果数量，默认3，最多5"},
+                },
+                "required": ["query"],
+            },
         },
     },
 ]

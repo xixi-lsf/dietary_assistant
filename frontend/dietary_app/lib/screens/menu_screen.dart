@@ -84,6 +84,16 @@ class _MenuScreenState extends State<MenuScreen> {
   }
 
   Future<void> _recommend({String feedback = ''}) async {
+    final apiKey = await ApiConfig.getApiKey();
+    final aiBaseUrl = await ApiConfig.getAiBaseUrl();
+    final aiModel = await ApiConfig.getAiModel();
+    if (apiKey == null || apiKey.isEmpty || aiBaseUrl == null || aiBaseUrl.isEmpty || aiModel == null || aiModel.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('当前无可用模型，请先在设置中配置 API Key、Base URL 和模型名称')),
+      );
+      return;
+    }
     setState(() {
       _loading = true;
       _dishes = [];
@@ -96,9 +106,6 @@ class _MenuScreenState extends State<MenuScreen> {
       _lastToolCalls = [];
     });
     try {
-      final apiKey = await ApiConfig.getApiKey();
-      final aiBaseUrl = await ApiConfig.getAiBaseUrl();
-      final aiModel = await ApiConfig.getAiModel();
       final imageApiKey = await ApiConfig.getImageApiKey();
       final imageBaseUrl = await ApiConfig.getImageBaseUrl();
 
