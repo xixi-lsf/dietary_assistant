@@ -340,18 +340,83 @@ def extract_feedback_tags(
     api_key: str,
     recipe_name: str,
     score: int,
-    comment: str,
+    comment: str = "",
+    quick_reason: str = "",
     base_url: str = None,
     model: str = None,
 ) -> str:
-    prompt = f"""从以下用户对菜肴「{recipe_name}」的反馈中提取结构化偏好标签：
+    """从用户对菜品的所有评价信息中提取纯口味特征词。
 
-评分：{score}/5
-评论：{comment or '无'}
+    只提取口味特征（辣、清淡、鲜、油腻等），不带喜不喜欢前缀。
+    评分高低决定权重方向，由调用方的 EMA 公式处理。
+    """
+    score_desc = {1: "非常不喜欢", 2: "不太喜欢", 3: "一般", 4: "比较喜欢", 5: "非常喜欢"}
+    parts = [f"菜名：{recipe_name}", f"评分：{score}/5（{score_desc.get(score, '')}）"]
+    if quick_reason:
+        parts.append(f"用户选择的反馈标签：{quick_reason}")
+    if comment:
+        parts.append(f"文字评论：{comment}")
 
-请提取用户的口味偏好（如：偏咸、偏淡、喜欢辣、不喜欢某食材等），
-以简短的中文标签形式返回，多个标签用逗号分隔，不超过30字。
+    feedback_text = "\n".join(parts)
+
+    prompt = f"""根据用户对一道菜的评价，提取这道菜体现的口味特征词。
+
+用户评价：
+{feedback_text}
+
+要求：
+1. 只提取口味/食材特征词，如：辣、清淡、鲜、甜、咸、油腻、爽口、香、嫩、酸、麻、浓郁等
+2. 不要写"喜欢"或"不喜欢"，只写特征本身（喜不喜欢由评分决定）
+3. 合并近义词（"微辣"和"辣"→"辣"，"口味淡"和"清淡"→"清淡"）
+4. 如果反馈标签是"适合我的口味"、"份量合适"等无口味语义的词，忽略它们，从菜名推断
+5. 最多返回3个标签，逗号分隔，无法推断则返回空字符串
+
 只返回标签，不要其他文字。"""
+
+    data = _post(api_key, base_url, {
+        "model": model,
+        "max_tokens": 60,
+        "messages": [{"role": "user", "content": prompt}],
+    })
+
+    return data
+
+
+def initialize_memory_from_profile(
+    api_key: str,
+    preferences: str,
+    dislikes: str,
+    base_url: str = None,
+    model: str = None,
+) -> dict:
+    """把用户设置页的口味偏好和忌口转化为口味标签及初始权重。
+
+    返回 {"like_tags": ["辣", "鲜"], "dislike_tags": ["油腻", "甜"]}
+    like_tags 初始权重 0.8，dislike_tags 初始权重 0.2。
+    """
+    if not preferences and not dislikes:
+        return {"like_tags": [], "dislike_tags": []}
+
+    parts = []
+    if preferences:
+        parts.append(f"口味偏好：{preferences}")
+    if dislikes:
+        parts.append(f"不喜欢/忌口：{dislikes}")
+
+    prompt = f"""根据用户填写的饮食偏好，提取口味特征标签。
+
+用户信息：
+{chr(10).join(parts)}
+
+要求：
+1. 从"口味偏好"中提取用户喜欢的口味特征词（如：辣、鲜、清淡、香等）
+2. 从"不喜欢/忌口"中提取用户不喜欢的口味特征词（如：油腻、甜、腥等）
+3. 只提取口味特征，不要食材名称（"香菜"是食材不是口味，忽略）
+4. 合并近义词
+5. 以 JSON 格式返回：{{"like": ["标签1", "标签2"], "dislike": ["标签3"]}}
+6. 无法提取则对应列表为空
+
+只返回 JSON，不要其他文字。"""
 
     data = _post(api_key, base_url, {
         "model": model,
@@ -359,7 +424,15 @@ def extract_feedback_tags(
         "messages": [{"role": "user", "content": prompt}],
     })
 
-    return data
+    import json as _json
+    try:
+        result = _json.loads(data)
+        return {
+            "like_tags": result.get("like", []),
+            "dislike_tags": result.get("dislike", []),
+        }
+    except Exception:
+        return {"like_tags": [], "dislike_tags": []}
 
 
 def _submit_image_task(image_api_key: str, prompt: str) -> str | None:

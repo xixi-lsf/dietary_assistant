@@ -52,7 +52,7 @@ async def identify_ingredients(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"AI 调用失败: {str(e)}")
 
-#用户对菜品的反馈入库，并更新用户的长期记忆（UserMemory 和 UserProfile.preferences）
+#用户对菜品的反馈入库，并更新用户的长期记忆（UserMemory）
 @router.post("/feedback")
 def submit_feedback(data: FeedbackSchema, db: Session = Depends(get_db),
                     x_api_key: str = Header(default=None),
@@ -63,33 +63,22 @@ def submit_feedback(data: FeedbackSchema, db: Session = Depends(get_db),
     db.commit()
     db.refresh(fb)
 
-    # 提取标签，更新长期记忆
+    # 提取口味标签，更新长期记忆
     if x_api_key:
         try:
-            # 有评论时用 AI 提取标签，没有评论时用 quick_reason 作为标签
-            if data.comment:
-                tags = ai_service.extract_feedback_tags(
-                    api_key=x_api_key,
-                    recipe_name=data.recipe_name,
-                    score=data.score,
-                    comment=data.comment,
-                    base_url=x_ai_base_url,
-                    model=x_ai_model,
-                )
-            elif data.quick_reason:
-                tags = data.quick_reason  # 直接用快速反馈原因作为标签
-            else:
-                # 只有评分，生成简单标签
-                tags = "喜欢" if data.score >= 4 else ("一般" if data.score == 3 else "不喜欢")
+            # 统一走 AI 提取：把所有评价信息（评分、预设标签、文字评论）喂给模型
+            # 模型只提取口味特征词，评分决定权重方向（高分→权重上升，低分→权重下降）
+            tags = ai_service.extract_feedback_tags(
+                api_key=x_api_key,
+                recipe_name=data.recipe_name,
+                score=data.score,
+                comment=data.comment or "",
+                quick_reason=data.quick_reason or "",
+                base_url=x_ai_base_url,
+                model=x_ai_model,
+            )
 
-            if tags:
-                # 写回 UserProfile.preferences
-                profile = db.query(UserProfile).first()
-                if profile:
-                    existing = profile.preferences or ""
-                    profile.preferences = (existing + "；" + tags).strip("；")
-
-                # 写入结构化长期记忆
+            if tags and tags.strip():
                 memory = db.query(UserMemory).first()
                 if not memory:
                     memory = UserMemory()
@@ -111,6 +100,56 @@ def submit_feedback(data: FeedbackSchema, db: Session = Depends(get_db),
 @router.get("/feedback")
 def list_feedback(db: Session = Depends(get_db)):
     return db.query(Feedback).order_by(Feedback.created_at.desc()).all()
+
+
+class InitMemoryRequest(BaseModel):
+    preferences: str = ""
+    dislikes: str = ""
+    api_key: str = ""
+    ai_base_url: str = ""
+    ai_model: str = ""
+
+
+#用户保存设置时调用，把口味偏好和忌口初始化为口味权重
+#只设置尚未有记录的标签，不覆盖已有权重（保护运行中积累的数据）
+@router.post("/init-memory-from-profile")
+def init_memory_from_profile(req: InitMemoryRequest, db: Session = Depends(get_db)):
+    if not req.api_key or (not req.preferences and not req.dislikes):
+        return {"status": "skipped"}
+
+    try:
+        result = ai_service.initialize_memory_from_profile(
+            api_key=req.api_key,
+            preferences=req.preferences,
+            dislikes=req.dislikes,
+            base_url=req.ai_base_url or None,
+            model=req.ai_model or None,
+        )
+    except Exception:
+        return {"status": "error"}
+
+    like_tags = result.get("like_tags", [])
+    dislike_tags = result.get("dislike_tags", [])
+    if not like_tags and not dislike_tags:
+        return {"status": "no_tags"}
+
+    memory = db.query(UserMemory).first()
+    if not memory:
+        memory = UserMemory()
+        db.add(memory)
+
+    weights = memory.get_taste_weights()
+    # 只初始化尚未有记录的标签，不覆盖运行中积累的权重
+    for tag in like_tags:
+        if tag not in weights:
+            weights[tag] = 0.8
+    for tag in dislike_tags:
+        if tag not in weights:
+            weights[tag] = 0.2
+
+    memory.taste_weights = __import__("json").dumps(weights, ensure_ascii=False)
+    db.commit()
+    return {"status": "ok", "like_tags": like_tags, "dislike_tags": dislike_tags}
 
 #基于用户近期的营养摄入记录，生成周期性的饮食总结和建议
 @router.post("/diet-advice")

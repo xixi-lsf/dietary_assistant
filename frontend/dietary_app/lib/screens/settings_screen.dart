@@ -139,6 +139,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await ApiConfig.setWeatherApiKey(_weatherApiKeyCtrl.text);
     await ApiConfig.setSerperApiKey(_serperApiKeyCtrl.text);
     await ApiConfig.setAiModel(_aiModelCtrl.text);
+
+    // 把口味偏好/忌口初始化为口味权重（只初始化尚未有记录的标签）
+    final apiKey = _apiKeyCtrl.text.trim();
+    if (apiKey.isNotEmpty && (_prefsCtrl.text.isNotEmpty || _dislikesCtrl.text.isNotEmpty)) {
+      try {
+        await ApiService.post('/ai/init-memory-from-profile', {
+          'preferences': _prefsCtrl.text,
+          'dislikes': _dislikesCtrl.text,
+          'api_key': apiKey,
+          'ai_base_url': _aiBaseUrlCtrl.text.trim(),
+          'ai_model': _aiModelCtrl.text.trim(),
+        });
+      } catch (_) {}
+    }
+
     if (mounted) ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: const Text('已保存 🌱', style: TextStyle(color: SketchColors.textMain)),
