@@ -1,7 +1,4 @@
-import 'dart:js_interop';
-import 'dart:js_interop_unsafe';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:web/web.dart' as web;
 
 class ApiConfig {
   static const _storage = FlutterSecureStorage();
@@ -15,23 +12,18 @@ class ApiConfig {
 
   static const defaultBaseUrl = 'http://localhost:8000';
 
-  /// 从 web/env.js 中读取 APP_CONFIG.API_BASE_URL
-  static String _getEnvBaseUrl() {
-    try {
-      final config = (web.window as JSObject)['APP_CONFIG'];
-      if (config != null && config.isA<JSObject>()) {
-        final url = (config as JSObject)['API_BASE_URL'];
-        if (url != null && url.isA<JSString>()) {
-          return (url as JSString).toDart;
-        }
-      }
-    } catch (_) {}
-    return defaultBaseUrl;
+  /// 编译时注入的后端地址（通过 --dart-define=API_BASE_URL=...）
+  static const _envBaseUrl = String.fromEnvironment('API_BASE_URL');
+
+  static String _getEffectiveBaseUrl() {
+    return _envBaseUrl.isNotEmpty ? _envBaseUrl : defaultBaseUrl;
   }
 
   static Future<String> getBaseUrl() async {
     final stored = await _storage.read(key: _keyBaseUrl);
-    if (stored == null || stored == 'http://10.0.2.2:8000' || stored == defaultBaseUrl) return _getEnvBaseUrl();
+    if (stored == null || stored == 'http://10.0.2.2:8000' || stored == defaultBaseUrl) {
+      return _getEffectiveBaseUrl();
+    }
     return stored;
   }
   static Future<void> setBaseUrl(String url) async => _storage.write(key: _keyBaseUrl, value: url);

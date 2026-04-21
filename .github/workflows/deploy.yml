@@ -55,7 +55,7 @@ jobs:
         working-directory: frontend/dietary_app
         run: |
           flutter pub get
-          flutter build web --release
+          flutter build web --release --dart-define=API_BASE_URL=https://xixi-lsf-dietary-assistant.hf.space
 
       - name: Deploy to Vercel
         run: |
