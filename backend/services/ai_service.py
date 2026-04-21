@@ -4,7 +4,7 @@ import time as _time
 
 import httpx
 
-DEFAULT_AI_BASE_URL = "https://codeapi.icu"
+DEFAULT_AI_BASE_URL = "https://codeapi.icu/v1/messages"
 DEFAULT_MODEL = "claude-sonnet-4-6"
 
 _MAX_RETRIES = 3
@@ -12,7 +12,7 @@ _RETRY_BACKOFF = [5, 15, 30]  # 每次重试等待秒数
 
 
 def _post(api_key: str, base_url: str, payload: dict) -> dict:
-    url = base_url.rstrip('/') + '/v1/messages'
+    url = base_url.rstrip('/')
     headers = {
         'x-api-key': api_key,
         'anthropic-version': '2023-06-01',
