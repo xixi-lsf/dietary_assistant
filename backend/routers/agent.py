@@ -149,44 +149,45 @@ async def agent_chat(req: AgentChatRequest, db: Session = Depends(get_db)):
         #如果是end_turn说明模型完成了最终回答，没有更多工具调用需求
         #如果是tool_use说明模型还需要调用工具
         stop_reason = response.get("stop_reason")
-        #相应内容块列表（可能是文本（type: "text"）或工具调用请求（type: "tool_use"））
         content_blocks = response.get("content", [])
-        #将模型响应追加到message列表中
+
+        # 防止空 content 导致下游 API 报 "消息内容为空"
+        if not content_blocks:
+            print(f"[Agent] chat 警告：第 {_round+1} 轮返回空 content，stop_reason={stop_reason}")
+            break
+
         messages.append({"role": "assistant", "content": content_blocks})
 
-        #如果end_turn，遍历content_blocks提取type: "text" 的块，拼接成完整回复文本
         if stop_reason == "end_turn":
             text = ""
             for block in content_blocks:
                 if isinstance(block, dict) and block.get("type") == "text":
                     text += block.get("text", "")
-            #返回前端的内容：
             return {
-                "reply": text.strip(),#最终回复内容
-                "tool_calls": tool_calls_log,#工具调用记录
-                "rounds": _round + 1,#实际轮数
-                "source": "agent",#标识这是 Agent 模式生成的回复
+                "reply": text.strip(),
+                "tool_calls": tool_calls_log,
+                "rounds": _round + 1,
+                "source": "agent",
             }
 
-        #如果还需要调用工具，遍历 content_blocks，找到所有 type: "tool_use" 的块
         if stop_reason == "tool_use":
             tool_results = []
             for block in content_blocks:
                 if not isinstance(block, dict) or block.get("type") != "tool_use":
                     continue
                 tool_name = block["name"]
-                #模型看到input_schema,生成参数json，提取到tool_input
                 tool_input = block.get("input", {})
                 tool_id = block["id"]
-                #执行工具
                 result = execute_tool(tool_name, tool_input, db, external_keys)
                 tool_calls_log.append({"tool": tool_name, "input": tool_input, "result": result})
-                #消息块，作为一条新的user消息加入messages
                 tool_results.append({
                     "type": "tool_result",
                     "tool_use_id": tool_id,
                     "content": json.dumps(result, ensure_ascii=False),
                 })
+            if not tool_results:
+                print(f"[Agent] chat 警告：stop_reason=tool_use 但无 tool_use 块")
+                break
             messages.append({"role": "user", "content": tool_results})
             continue
         break
@@ -258,6 +259,12 @@ async def agent_recommend(req: AgentRecommendRequest, db: Session = Depends(get_
 
         stop_reason = response.get("stop_reason")
         content_blocks = response.get("content", [])
+
+        # 防止空 content 导致下游 API 报 "消息内容为空"
+        if not content_blocks:
+            print(f"[Agent] 警告：第 {_round+1} 轮返回空 content，stop_reason={stop_reason}")
+            break
+
         messages.append({"role": "assistant", "content": content_blocks})
 
         if stop_reason == "end_turn":
@@ -266,7 +273,6 @@ async def agent_recommend(req: AgentRecommendRequest, db: Session = Depends(get_
                 if isinstance(block, dict) and block.get("type") == "text":
                     text += block.get("text", "")
             text = text.strip()
-            # 从文字中提取 JSON 块（模型可能在 JSON 前后加说明文字）
             if "```" in text:
                 parts = text.split("```")
                 for part in parts:
@@ -276,7 +282,6 @@ async def agent_recommend(req: AgentRecommendRequest, db: Session = Depends(get_
                     if part.strip().startswith("{"):
                         text = part.strip()
                         break
-            # 找到第一个 { 到最后一个 } 之间的内容
             start = text.find("{")
             end = text.rfind("}")
             if start != -1 and end != -1 and end > start:
@@ -320,6 +325,9 @@ async def agent_recommend(req: AgentRecommendRequest, db: Session = Depends(get_
                     "tool_use_id": tool_id,
                     "content": json.dumps(result, ensure_ascii=False),
                 })
+            if not tool_results:
+                print(f"[Agent] 警告：stop_reason=tool_use 但无 tool_use 块")
+                break
             messages.append({"role": "user", "content": tool_results})
             continue
 
