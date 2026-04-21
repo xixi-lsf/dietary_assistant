@@ -47,6 +47,12 @@ async def _post_with_tools(api_key: str, base_url: str, messages: list, system: 
         "messages": messages,
     }
 
+    print(f"[Agent] payload messages count={len(messages)}, system len={len(system)}, tools count={len(TOOL_SCHEMAS)}")
+    for i, m in enumerate(messages):
+        content = m.get("content", "")
+        content_preview = str(content)[:200] if content else "EMPTY"
+        print(f"[Agent] msg[{i}] role={m.get('role')} content_type={type(content).__name__} preview={content_preview}")
+
     retry_backoff = [5, 15, 30]
     last_err = None
     for attempt in range(retries + 1):
