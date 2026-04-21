@@ -24,14 +24,16 @@ class AgentChatRequest(BaseModel):
     history: List[dict] = []
     api_key: str
     ai_base_url: Optional[str] = None
+    ai_model: Optional[str] = None
     image_api_key: Optional[str] = None
     image_base_url: Optional[str] = None
     weather_api_key: Optional[str] = None
     serper_api_key: Optional[str] = None
 
 #向 Claude API（兼容端点）发送请求（APIKEY,base_url,历史对话，系统提示词，重试次数）
-async def _post_with_tools(api_key: str, base_url: str, messages: list, system: str, retries: int = 3) -> dict:
+async def _post_with_tools(api_key: str, base_url: str, messages: list, system: str, model: str = None, retries: int = 3) -> dict:
     import asyncio
+    from backend.services.ai_service import DEFAULT_MODEL
     url = base_url.rstrip("/") + "/v1/messages"
     headers = {
         "x-api-key": api_key,
@@ -40,7 +42,7 @@ async def _post_with_tools(api_key: str, base_url: str, messages: list, system: 
     }
 
     payload = {
-        "model": "claude-sonnet-4-6",
+        "model": model or DEFAULT_MODEL,
         "max_tokens": 2048,
         "system": system,
         "tools": TOOL_SCHEMAS,
@@ -140,6 +142,7 @@ async def agent_chat(req: AgentChatRequest, db: Session = Depends(get_db)):
                 base_url=req.ai_base_url or DEFAULT_AI_BASE_URL,
                 messages=messages,
                 system=system_prompt,
+                model=req.ai_model,
             )
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"AI 调用失败: {str(e)}")
@@ -201,6 +204,7 @@ class AgentRecommendRequest(BaseModel):
     preferences: str = ""
     api_key: str
     ai_base_url: Optional[str] = None
+    ai_model: Optional[str] = None
     image_api_key: Optional[str] = None
     image_base_url: Optional[str] = None
     weather_api_key: Optional[str] = None
@@ -249,6 +253,7 @@ def _fallback_recommend(req, db: Session, tool_calls_log: list):
             base_url=req.ai_base_url,
             long_term_memory=long_term,
             short_term_memory=short_term,
+            model=req.ai_model,
         )
 
         if isinstance(result, list):
@@ -312,6 +317,7 @@ async def agent_recommend(req: AgentRecommendRequest, db: Session = Depends(get_
                 base_url=req.ai_base_url or DEFAULT_AI_BASE_URL,
                 messages=messages,
                 system=system_prompt,
+                model=req.ai_model,
             )
         except Exception as e:
             print(f"[Agent] recommend AI 调用失败: {e}，降级到非 agent 模式")

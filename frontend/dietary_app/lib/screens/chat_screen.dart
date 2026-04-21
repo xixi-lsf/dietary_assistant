@@ -323,6 +323,7 @@ class _ChatScreenState extends State<ChatScreen> {
     try {
       final apiKey = await ApiConfig.getApiKey();
       final aiBaseUrl = await ApiConfig.getAiBaseUrl();
+      final aiModel = await ApiConfig.getAiModel();
       final history = _current.messages
           .take(_current.messages.length - 1)
           .map((m) => {
@@ -350,6 +351,8 @@ class _ChatScreenState extends State<ChatScreen> {
           'api_key': apiKey,
           if (aiBaseUrl != null && aiBaseUrl.isNotEmpty)
             'ai_base_url': aiBaseUrl,
+          if (aiModel != null && aiModel.isNotEmpty)
+            'ai_model': aiModel,
           if (weatherApiKey != null && weatherApiKey.isNotEmpty)
             'weather_api_key': weatherApiKey,
           if (serperApiKey != null && serperApiKey.isNotEmpty)
@@ -372,6 +375,8 @@ class _ChatScreenState extends State<ChatScreen> {
           if (apiKey != null && apiKey.isNotEmpty) 'api_key': apiKey,
           if (aiBaseUrl != null && aiBaseUrl.isNotEmpty)
             'ai_base_url': aiBaseUrl,
+          if (aiModel != null && aiModel.isNotEmpty)
+            'ai_model': aiModel,
         });
 
         _appendAssistantMessage(
@@ -545,6 +550,7 @@ class _ChatScreenState extends State<ChatScreen> {
     try {
       final apiKey = await ApiConfig.getApiKey();
       final aiBaseUrl = await ApiConfig.getAiBaseUrl();
+      final aiModel = await ApiConfig.getAiModel();
       final imageApiKey = await ApiConfig.getImageApiKey();
       final imageBaseUrl = await ApiConfig.getImageBaseUrl();
       final weatherApiKey = await ApiConfig.getWeatherApiKey();
@@ -566,6 +572,8 @@ class _ChatScreenState extends State<ChatScreen> {
           'api_key': apiKey,
           if (aiBaseUrl != null && aiBaseUrl.isNotEmpty)
             'ai_base_url': aiBaseUrl,
+          if (aiModel != null && aiModel.isNotEmpty)
+            'ai_model': aiModel,
           if (imageApiKey != null && imageApiKey.isNotEmpty)
             'image_api_key': imageApiKey,
           if (imageBaseUrl != null && imageBaseUrl.isNotEmpty)
@@ -591,6 +599,8 @@ class _ChatScreenState extends State<ChatScreen> {
               'api_key': apiKey,
               if (aiBaseUrl != null && aiBaseUrl.isNotEmpty)
                 'ai_base_url': aiBaseUrl,
+              if (aiModel != null && aiModel.isNotEmpty)
+                'ai_model': aiModel,
             });
             nutritionAdvice = adviceData['advice'] as String? ?? '';
           } catch (_) {}
@@ -604,6 +614,8 @@ class _ChatScreenState extends State<ChatScreen> {
           if (apiKey != null && apiKey.isNotEmpty) 'api_key': apiKey,
           if (aiBaseUrl != null && aiBaseUrl.isNotEmpty)
             'ai_base_url': aiBaseUrl,
+          if (aiModel != null && aiModel.isNotEmpty)
+            'ai_model': aiModel,
           if (imageApiKey != null && imageApiKey.isNotEmpty)
             'image_api_key': imageApiKey,
           if (imageBaseUrl != null && imageBaseUrl.isNotEmpty)

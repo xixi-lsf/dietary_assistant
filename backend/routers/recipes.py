@@ -108,6 +108,7 @@ def recommend_recipes(req: MenuRequest, db: Session = Depends(get_db)):
                 nutrition_advice=req.nutrition_advice,
                 long_term_memory=long_term,
                 short_term_memory=short_term,
+                model=req.ai_model,
             )
             if isinstance(result, list):
                 result = ai_service.attach_recipe_preview_images(

@@ -211,6 +211,7 @@ class DietAdviceRequest(BaseModel):
     cycle_days: int = 7
     api_key: Optional[str] = None
     ai_base_url: Optional[str] = None
+    ai_model: Optional[str] = None
 
 
 class MenuRequest(BaseModel):
@@ -220,6 +221,7 @@ class MenuRequest(BaseModel):
     use_fridge: bool = True
     api_key: Optional[str] = None
     ai_base_url: Optional[str] = None
+    ai_model: Optional[str] = None
     image_api_key: Optional[str] = None
     image_base_url: Optional[str] = None
     model: str = "mock"

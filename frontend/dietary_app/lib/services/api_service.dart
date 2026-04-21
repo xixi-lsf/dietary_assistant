@@ -19,9 +19,13 @@ class ApiService {
 
   static Future<Map<String, String>> _authHeaders() async {
     final key = await ApiConfig.getApiKey();
+    final aiBaseUrl = await ApiConfig.getAiBaseUrl();
+    final aiModel = await ApiConfig.getAiModel();
     return {
       'Content-Type': 'application/json',
       if (key != null && key.isNotEmpty) 'X-API-Key': key,
+      if (aiBaseUrl != null && aiBaseUrl.isNotEmpty) 'X-AI-Base-URL': aiBaseUrl,
+      if (aiModel != null && aiModel.isNotEmpty) 'X-AI-Model': aiModel,
     };
   }
 

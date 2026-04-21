@@ -33,6 +33,7 @@ async def identify_ingredients(
     file: UploadFile = File(...),
     x_api_key: str = Header(default=None),
     x_ai_base_url: str = Header(default=None),
+    x_ai_model: str = Header(default=None),
 ):
     if not x_api_key:
         return {"ingredients": ["番茄", "鸡蛋", "青椒"], "source": "mock"}
@@ -45,6 +46,7 @@ async def identify_ingredients(
             image_bytes=image_bytes,
             media_type=media_type,
             base_url=x_ai_base_url,
+            model=x_ai_model,
         )
         return {"ingredients": ingredients, "source": "claude"}
     except Exception as e:
@@ -54,7 +56,8 @@ async def identify_ingredients(
 @router.post("/feedback")
 def submit_feedback(data: FeedbackSchema, db: Session = Depends(get_db),
                     x_api_key: str = Header(default=None),
-                    x_ai_base_url: str = Header(default=None)):
+                    x_ai_base_url: str = Header(default=None),
+                    x_ai_model: str = Header(default=None)):
     fb = Feedback(**data.model_dump())
     db.add(fb)
     db.commit()
@@ -71,6 +74,7 @@ def submit_feedback(data: FeedbackSchema, db: Session = Depends(get_db),
                     score=data.score,
                     comment=data.comment,
                     base_url=x_ai_base_url,
+                    model=x_ai_model,
                 )
             elif data.quick_reason:
                 tags = data.quick_reason  # 直接用快速反馈原因作为标签
@@ -173,6 +177,7 @@ def get_diet_advice(req: DietAdviceRequest, db: Session = Depends(get_db)):
             bmr=bmr,
             user_profile=user_profile_dict,
             base_url=req.ai_base_url,
+            model=req.ai_model,
         )
         return {**result, "source": "claude", "bmr": round(bmr)}
     except Exception as e:
@@ -184,6 +189,7 @@ class ChatRequest(BaseModel):
     history: List[dict] = []
     api_key: Optional[str] = None
     ai_base_url: Optional[str] = None
+    ai_model: Optional[str] = None
 
 #与agent区别：agent.py 实现了工具调用（tool use）的多轮 Agent 循环，模型可以自主调用工具（如查冰箱、查记忆等）
 #ai.py 是传统的单次请求-响应模式，系统提前准备好上下文（查询数据库，组装提示词），然后一次性调用 AI，没有工具调用能力
@@ -251,6 +257,7 @@ def chat(req: ChatRequest, db: Session = Depends(get_db)):
             history=req.history,
             message=req.message,
             base_url=req.ai_base_url,
+            model=req.ai_model,
         )
         return {"reply": reply, "source": "claude"}
     except Exception as e:

@@ -5,6 +5,7 @@ import time as _time
 import httpx
 
 DEFAULT_AI_BASE_URL = "https://codeapi.icu"
+DEFAULT_MODEL = "claude-sonnet-4-6"
 
 _MAX_RETRIES = 3
 _RETRY_BACKOFF = [5, 15, 30]  # 每次重试等待秒数
@@ -40,6 +41,7 @@ def recommend_recipes(
     nutrition_advice: str = "",
     long_term_memory: dict = None,
     short_term_memory: dict = None,
+    model: str = None,
 ) -> dict:
     fridge_str = ", ".join(i["name"] for i in fridge_items) if fridge_items else "未知"
 
@@ -139,7 +141,7 @@ def recommend_recipes(
 7. nutrition数据要准确，单位kcal/g"""
 
     data = _post(api_key, base_url or DEFAULT_AI_BASE_URL, {
-        "model": "claude-sonnet-4-6",
+        "model": model or DEFAULT_MODEL,
         "max_tokens": 2048,
         "messages": [{"role": "user", "content": prompt}],
     })
@@ -159,6 +161,7 @@ def generate_recipe_detail(
     base_url: str = None,
     image_api_key: str = None,
     image_base_url: str = None,
+    model: str = None,
 ) -> list[dict]:
     prompt = f"""你是一位专业厨师，请为菜肴「{recipe_name}」的每个烹饪步骤生成详细说明。
 
@@ -180,7 +183,7 @@ def generate_recipe_detail(
 以JSON数组格式返回，只返回JSON，不要其他文字。"""
 
     data = _post(api_key, base_url or DEFAULT_AI_BASE_URL, {
-        "model": "claude-sonnet-4-6",
+        "model": model or DEFAULT_MODEL,
         "max_tokens": 3000,
         "messages": [{"role": "user", "content": prompt}],
     })
@@ -233,6 +236,7 @@ def recommend_banquet(
     preferences: str,
     dietary_restrictions: str,
     base_url: str = None,
+    model: str = None,
 ) -> list[dict]:
     dish_count = people_count + 2
 
@@ -257,7 +261,7 @@ def recommend_banquet(
 只返回JSON，不要其他文字。"""
 
     data = _post(api_key, base_url or DEFAULT_AI_BASE_URL, {
-        "model": "claude-sonnet-4-6",
+        "model": model or DEFAULT_MODEL,
         "max_tokens": 3000,
         "messages": [{"role": "user", "content": prompt}],
     })
@@ -278,6 +282,7 @@ def generate_diet_advice(
     bmr: float,
     user_profile: dict,
     base_url: str = None,
+    model: str = None,
 ) -> dict:
     summary_str = json.dumps(nutrition_summary, ensure_ascii=False)
     today_str = json.dumps(today_summary, ensure_ascii=False)
@@ -312,7 +317,7 @@ def generate_diet_advice(
 语气要温柔可爱，像朋友一样，避免使用"严重不足""严重超标"等打击性词汇。每部分不超过100字。"""
 
     data = _post(api_key, base_url or DEFAULT_AI_BASE_URL, {
-        "model": "claude-sonnet-4-6",
+        "model": model or DEFAULT_MODEL,
         "max_tokens": 600,
         "messages": [{"role": "user", "content": prompt}],
     })
@@ -326,6 +331,7 @@ def extract_feedback_tags(
     score: int,
     comment: str,
     base_url: str = None,
+    model: str = None,
 ) -> str:
     prompt = f"""从以下用户对菜肴「{recipe_name}」的反馈中提取结构化偏好标签：
 
@@ -337,7 +343,7 @@ def extract_feedback_tags(
 只返回标签，不要其他文字。"""
 
     data = _post(api_key, base_url or DEFAULT_AI_BASE_URL, {
-        "model": "claude-sonnet-4-6",
+        "model": model or DEFAULT_MODEL,
         "max_tokens": 100,
         "messages": [{"role": "user", "content": prompt}],
     })
@@ -446,11 +452,11 @@ def attach_recipe_preview_images(
         return list(executor.map(_poll_preview, task_ids))
 
 
-def identify_ingredients(api_key: str, image_bytes: bytes, media_type: str = "image/jpeg", base_url: str = None) -> list[str]:
+def identify_ingredients(api_key: str, image_bytes: bytes, media_type: str = "image/jpeg", base_url: str = None, model: str = None) -> list[str]:
     image_data = base64.standard_b64encode(image_bytes).decode("utf-8")
 
     data = _post(api_key, base_url or DEFAULT_AI_BASE_URL, {
-        "model": "claude-sonnet-4-6",
+        "model": model or DEFAULT_MODEL,
         "max_tokens": 512,
         "messages": [
             {
@@ -487,6 +493,7 @@ def chat(
     history: list[dict],
     message: str,
     base_url: str = None,
+    model: str = None,
 ) -> str:
     messages = []
     for h in history:
@@ -497,7 +504,7 @@ def chat(
     messages.append({"role": "user", "content": message})
 
     data = _post(api_key, base_url or DEFAULT_AI_BASE_URL, {
-        "model": "claude-sonnet-4-6",
+        "model": model or DEFAULT_MODEL,
         "max_tokens": 1024,
         "system": system_prompt,
         "messages": messages,

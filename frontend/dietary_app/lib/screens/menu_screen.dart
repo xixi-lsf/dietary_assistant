@@ -98,6 +98,7 @@ class _MenuScreenState extends State<MenuScreen> {
     try {
       final apiKey = await ApiConfig.getApiKey();
       final aiBaseUrl = await ApiConfig.getAiBaseUrl();
+      final aiModel = await ApiConfig.getAiModel();
       final imageApiKey = await ApiConfig.getImageApiKey();
       final imageBaseUrl = await ApiConfig.getImageBaseUrl();
 
@@ -110,6 +111,7 @@ class _MenuScreenState extends State<MenuScreen> {
           'preferences': _prefCtrl.text,
           'api_key': apiKey,
           if (aiBaseUrl != null && aiBaseUrl.isNotEmpty) 'ai_base_url': aiBaseUrl,
+          if (aiModel != null && aiModel.isNotEmpty) 'ai_model': aiModel,
           if (imageApiKey != null && imageApiKey.isNotEmpty) 'image_api_key': imageApiKey,
           if (imageBaseUrl != null && imageBaseUrl.isNotEmpty) 'image_base_url': imageBaseUrl,
           if ((await ApiConfig.getWeatherApiKey())?.isNotEmpty == true)
@@ -134,6 +136,7 @@ class _MenuScreenState extends State<MenuScreen> {
               'cycle_days': profile['cycle_days'] ?? 7,
               'api_key': apiKey,
               if (aiBaseUrl != null && aiBaseUrl.isNotEmpty) 'ai_base_url': aiBaseUrl,
+              if (aiModel != null && aiModel.isNotEmpty) 'ai_model': aiModel,
             });
             nutritionAdvice = adviceData['advice'] ?? '';
           } catch (_) {}
@@ -145,6 +148,7 @@ class _MenuScreenState extends State<MenuScreen> {
           'use_fridge': true,
           if (apiKey != null && apiKey.isNotEmpty) 'api_key': apiKey,
           if (aiBaseUrl != null && aiBaseUrl.isNotEmpty) 'ai_base_url': aiBaseUrl,
+          if (aiModel != null && aiModel.isNotEmpty) 'ai_model': aiModel,
           if (imageApiKey != null && imageApiKey.isNotEmpty) 'image_api_key': imageApiKey,
           if (imageBaseUrl != null && imageBaseUrl.isNotEmpty) 'image_base_url': imageBaseUrl,
           'model': (apiKey != null && apiKey.isNotEmpty) ? 'claude' : 'mock',

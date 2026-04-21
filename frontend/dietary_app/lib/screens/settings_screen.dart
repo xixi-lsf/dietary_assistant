@@ -29,6 +29,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final _imageBaseUrlCtrl = TextEditingController();
   final _weatherApiKeyCtrl = TextEditingController();
   final _serperApiKeyCtrl = TextEditingController();
+  final _aiModelCtrl = TextEditingController();
   String _gender = 'male';
   String _activityLevel = 'moderate';
   bool _loading = true;
@@ -75,6 +76,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final imageBaseUrl = await ApiConfig.getImageBaseUrl();
       final weatherApiKey = await ApiConfig.getWeatherApiKey();
       final serperApiKey = await ApiConfig.getSerperApiKey();
+      final aiModel = await ApiConfig.getAiModel();
       setState(() {
         _nameCtrl.text = profile['name'] ?? '';
         _dislikesCtrl.text = profile['dislikes'] ?? '';
@@ -93,6 +95,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _imageBaseUrlCtrl.text = imageBaseUrl ?? '';
         _weatherApiKeyCtrl.text = weatherApiKey ?? '';
         _serperApiKeyCtrl.text = serperApiKey ?? '';
+        _aiModelCtrl.text = aiModel ?? '';
         _loading = false;
       });
     } catch (_) {
@@ -135,6 +138,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await ApiConfig.setImageBaseUrl(_imageBaseUrlCtrl.text);
     await ApiConfig.setWeatherApiKey(_weatherApiKeyCtrl.text);
     await ApiConfig.setSerperApiKey(_serperApiKeyCtrl.text);
+    await ApiConfig.setAiModel(_aiModelCtrl.text);
     if (mounted) ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: const Text('已保存 🌱', style: TextStyle(color: SketchColors.textMain)),
@@ -469,6 +473,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _sketchField(_baseUrlCtrl, '后端地址', hint: 'http://localhost:8000'),
         _sketchField(_apiKeyCtrl, 'AI API Key', obscure: true),
         _sketchField(_aiBaseUrlCtrl, 'AI Base URL（代理时填写）', hint: 'https://codeapi.icu'),
+        _sketchField(_aiModelCtrl, 'AI 模型名称', hint: 'deepseek-chat, claude-sonnet-4-6 等'),
       ],
     );
   }

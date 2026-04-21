@@ -9,6 +9,7 @@ class ApiConfig {
   static const _keyImageBaseUrl = 'image_base_url';
   static const _keyWeatherApiKey = 'weather_api_key';
   static const _keySerperApiKey = 'serper_api_key';
+  static const _keyAiModel = 'ai_model';
 
   static const defaultBaseUrl = 'http://localhost:8000';
 
@@ -45,4 +46,7 @@ class ApiConfig {
 
   static Future<String?> getSerperApiKey() async => _storage.read(key: _keySerperApiKey);
   static Future<void> setSerperApiKey(String key) async => _storage.write(key: _keySerperApiKey, value: key);
+
+  static Future<String?> getAiModel() async => _storage.read(key: _keyAiModel);
+  static Future<void> setAiModel(String model) async => _storage.write(key: _keyAiModel, value: model);
 }
