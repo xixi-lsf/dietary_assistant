@@ -58,6 +58,8 @@ async def _post_with_tools(api_key: str, base_url: str, messages: list, system: 
                 print(f"[Agent] 429 限流，{wait}s 后重试 ({attempt+1}/{retries})")
                 await asyncio.sleep(wait)
                 continue
+            if r.status_code >= 400:
+                print(f"[Agent] API 错误 {r.status_code}: {r.text[:500]}")
             r.raise_for_status()
             return r.json()
         except (httpx.RemoteProtocolError, httpx.ConnectError, httpx.ReadError) as e:
@@ -100,6 +102,7 @@ def _build_system_prompt(db: Session) -> str:
 #参数：AgentChatRequest对象，数据库会话
 async def agent_chat(req: AgentChatRequest, db: Session = Depends(get_db)):
     #构建系统提示词
+    print(f"[Agent] chat: api_key={'***'+req.api_key[-4:] if req.api_key else 'EMPTY'} base_url={req.ai_base_url}")
     system_prompt = _build_system_prompt(db)
     #获取外部API KEY，打包成字典
     external_keys = {
@@ -200,6 +203,7 @@ class AgentRecommendRequest(BaseModel):
 @router.post("/recommend")
 async def agent_recommend(req: AgentRecommendRequest, db: Session = Depends(get_db)):
     """Agent 模式菜单推荐：模型自主调用工具获取上下文，再生成推荐"""
+    print(f"[Agent] recommend: api_key={'***'+req.api_key[-4:] if req.api_key else 'EMPTY'} base_url={req.ai_base_url}")
     external_keys = {
         "weather_api_key": req.weather_api_key,
         "serper_api_key": req.serper_api_key,
