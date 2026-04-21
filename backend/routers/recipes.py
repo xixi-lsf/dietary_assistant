@@ -169,6 +169,7 @@ def get_recipe_detail(req: RecipeDetailRequest):
             base_url=req.ai_base_url,
             image_api_key=req.image_api_key,
             image_base_url=req.image_base_url,
+            model=req.ai_model,
         )
         return {"steps": steps, "source": "claude"}
     except Exception as e:

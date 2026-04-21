@@ -82,6 +82,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
     try {
       final apiKey = await ApiConfig.getApiKey();
       final aiBaseUrl = await ApiConfig.getAiBaseUrl();
+      final aiModel = await ApiConfig.getAiModel();
       final imageApiKey = await ApiConfig.getImageApiKey();
       final imageBaseUrl = await ApiConfig.getImageBaseUrl();
 
@@ -90,6 +91,7 @@ class _RecipeDetailScreenState extends State<RecipeDetailScreen> {
         'steps': widget.recipe.steps,
         if (apiKey != null && apiKey.isNotEmpty) 'api_key': apiKey,
         if (aiBaseUrl != null && aiBaseUrl.isNotEmpty) 'ai_base_url': aiBaseUrl,
+        if (aiModel != null && aiModel.isNotEmpty) 'ai_model': aiModel,
         if (imageApiKey != null && imageApiKey.isNotEmpty) 'image_api_key': imageApiKey,
         if (imageBaseUrl != null && imageBaseUrl.isNotEmpty) 'image_base_url': imageBaseUrl,
       });
