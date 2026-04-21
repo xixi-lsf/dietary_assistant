@@ -2,12 +2,12 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from pydantic import BaseModel
-from datetime import date
+from datetime import date, timedelta
 import httpx
 import json
 
 from backend.database import get_db
-from backend.models import UserProfile, Ingredient, NutritionLog
+from backend.models import UserProfile, Ingredient, NutritionLog, UserMemory
 from backend.services.tool_service import TOOL_SCHEMAS, execute_tool
 from backend.services import ai_service
 from backend.services.ai_service import DEFAULT_AI_BASE_URL
@@ -206,6 +206,65 @@ class AgentRecommendRequest(BaseModel):
     weather_api_key: Optional[str] = None
     serper_api_key: Optional[str] = None
 
+
+def _fallback_recommend(req, db: Session, tool_calls_log: list):
+    """Agent 模式失败时降级到非 agent 单轮推荐"""
+    print("[Agent] fallback 到非 agent 推荐模式")
+    try:
+        fridge_items = db.query(Ingredient).filter(Ingredient.category == "ingredient").all()
+        fridge = [{"name": i.name, "quantity": i.quantity, "unit": i.unit} for i in fridge_items]
+
+        profile = db.query(UserProfile).first()
+        profile_dict = {}
+        if profile:
+            profile_dict = {"dislikes": profile.dislikes, "preferences": profile.preferences, "goal": profile.goal}
+
+        memory = db.query(UserMemory).first()
+        long_term = None
+        if memory:
+            long_term = {
+                "taste_weights": memory.get_taste_weights(),
+                "hard_constraints": memory.get_hard_constraints(),
+                "health_goals": memory.get_health_goals(),
+                "preference_summary": memory.preference_summary or "",
+            }
+
+        today = date.today().isoformat()
+        cycle_days = profile.cycle_days if profile else 7
+        start = (date.today() - timedelta(days=cycle_days - 1)).isoformat()
+        logs = db.query(NutritionLog).filter(NutritionLog.date >= start, NutritionLog.date <= today).all()
+        short_term = {
+            "cycle_nutrition": {},
+            "today_meals": [{"recipe_name": l.recipe_name, "meal_type": l.meal_type, "calories": l.calories} for l in logs if l.date == today],
+            "recent_recipes": list({l.recipe_name for l in logs if l.recipe_name}),
+        }
+
+        result = ai_service.recommend_recipes(
+            api_key=req.api_key,
+            occasion=req.occasion,
+            people_count=req.people_count,
+            preferences=req.preferences,
+            fridge_items=fridge,
+            user_profile=profile_dict,
+            base_url=req.ai_base_url,
+            long_term_memory=long_term,
+            short_term_memory=short_term,
+        )
+
+        if isinstance(result, list):
+            result = ai_service.attach_recipe_preview_images(result, req.image_api_key, req.image_base_url)
+            return {"recipes": result, "source": "agent_fallback", "tool_calls": tool_calls_log}
+        if isinstance(result, dict):
+            if "dishes" in result:
+                result["dishes"] = ai_service.attach_recipe_preview_images(result.get("dishes", []), req.image_api_key, req.image_base_url)
+            if "staples" in result:
+                result["staples"] = ai_service.attach_recipe_preview_images(result.get("staples", []), req.image_api_key, req.image_base_url)
+        return {**result, "source": "agent_fallback", "tool_calls": tool_calls_log}
+    except Exception as e:
+        print(f"[Agent] fallback 也失败: {e}")
+        raise HTTPException(status_code=500, detail=f"AI 调用失败（含降级）: {str(e)}")
+
+
 #端点2：菜单推荐
 @router.post("/recommend")
 async def agent_recommend(req: AgentRecommendRequest, db: Session = Depends(get_db)):
@@ -255,15 +314,20 @@ async def agent_recommend(req: AgentRecommendRequest, db: Session = Depends(get_
                 system=system_prompt,
             )
         except Exception as e:
-            raise HTTPException(status_code=500, detail=f"AI 调用失败: {str(e)}")
+            print(f"[Agent] recommend AI 调用失败: {e}，降级到非 agent 模式")
+            return _fallback_recommend(req, db, tool_calls_log)
 
         stop_reason = response.get("stop_reason")
         content_blocks = response.get("content", [])
 
         # 防止空 content 导致下游 API 报 "消息内容为空"
         if not content_blocks:
-            print(f"[Agent] 警告：第 {_round+1} 轮返回空 content，stop_reason={stop_reason}")
-            break
+            print(f"[Agent] 警告：第 {_round+1} 轮返回空 content，stop_reason={stop_reason}，降级到非 agent 模式")
+            try:
+                return _fallback_recommend(req, db, tool_calls_log)
+            except Exception as fb_err:
+                print(f"[Agent] fallback 调用异常: {fb_err}")
+                raise
 
         messages.append({"role": "assistant", "content": content_blocks})
 
@@ -326,11 +390,12 @@ async def agent_recommend(req: AgentRecommendRequest, db: Session = Depends(get_
                     "content": json.dumps(result, ensure_ascii=False),
                 })
             if not tool_results:
-                print(f"[Agent] 警告：stop_reason=tool_use 但无 tool_use 块")
-                break
+                print(f"[Agent] 警告：stop_reason=tool_use 但无 tool_use 块，降级到非 agent 模式")
+                return _fallback_recommend(req, db, tool_calls_log)
             messages.append({"role": "user", "content": tool_results})
             continue
 
         break
 
-    raise HTTPException(status_code=500, detail="Agent 超过最大工具调用轮次")
+    print("[Agent] 超过最大工具调用轮次或异常退出，降级到非 agent 模式")
+    return _fallback_recommend(req, db, tool_calls_log)
