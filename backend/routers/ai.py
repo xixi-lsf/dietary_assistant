@@ -139,11 +139,14 @@ def init_memory_from_profile(req: InitMemoryRequest, db: Session = Depends(get_d
         db.add(memory)
 
     weights = memory.get_taste_weights()
-    # 只初始化尚未有记录的标签，不覆盖运行中积累的权重
+    # 只初始化尚未有记录的标签，不覆盖运行中积累的权重（归一化近义词）
+    from backend.models import _normalize_tag
     for tag in like_tags:
+        tag = _normalize_tag(tag)
         if tag not in weights:
             weights[tag] = 0.8
     for tag in dislike_tags:
+        tag = _normalize_tag(tag)
         if tag not in weights:
             weights[tag] = 0.2
 

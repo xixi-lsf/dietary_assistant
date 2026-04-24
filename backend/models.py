@@ -5,6 +5,35 @@ from sqlalchemy.sql import func
 from pydantic import BaseModel
 from backend.database import Base
 import json
+import re
+
+# 近义词归一化映射：变体 → 标准词
+_TAG_SYNONYMS = {
+    "微辣": "辣", "略辣": "辣", "有点辣": "辣", "偏辣": "辣", "重辣": "辣", "超辣": "辣",
+    "口味淡": "清淡", "偏淡": "清淡", "淡": "清淡", "清爽": "清淡",
+    "鲜美": "鲜", "鲜香": "鲜",
+    "甜味": "甜", "偏甜": "甜",
+    "咸味": "咸", "偏咸": "咸", "重咸": "咸",
+    "油": "油腻", "偏油": "油腻", "很油": "油腻",
+    "爽": "爽口", "清爽口": "爽口",
+    "香味": "香", "浓香": "香",
+    "嫩滑": "嫩", "软嫩": "嫩", "细嫩": "嫩",
+    "酸味": "酸", "偏酸": "酸",
+    "麻辣": "麻", "花椒味": "麻",
+    "浓": "浓郁", "味浓": "浓郁", "口味重": "浓郁",
+}
+
+def _normalize_tag(tag: str) -> str:
+    """将近义词归一化为标准标签"""
+    tag = tag.strip()
+    return _TAG_SYNONYMS.get(tag, tag)
+
+def _split_tags(tags_str: str) -> list[str]:
+    """将 AI 返回的标签字符串拆分为独立标签列表，兼容中英文逗号、顿号"""
+    if not tags_str or not tags_str.strip():
+        return []
+    parts = re.split(r"[,，、\s]+", tags_str.strip())
+    return [_normalize_tag(t) for t in parts if t.strip()]
 
 # 所有数据结构
 
@@ -115,8 +144,8 @@ class UserMemory(Base):
         weights = self.get_taste_weights()
         # 评分 1-5 映射到 [-1, +1] 的增量（eg.评分5，映射为1；评分1，映射为-1）
         delta = (score - 3) / 2.0
-        #对每个标签独立更新
-        for tag in [t.strip() for t in new_tags.split("，") if t.strip()]:
+        #对每个标签独立更新（兼容中英文逗号、顿号，并归一化近义词）
+        for tag in _split_tags(new_tags):
             #获取旧权重，不存在则默认0.5
             old = weights.get(tag, 0.5)
             # 衰减旧值，叠加新信号
