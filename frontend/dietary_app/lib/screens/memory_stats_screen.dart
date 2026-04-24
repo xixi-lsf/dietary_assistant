@@ -1,7 +1,8 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:fl_chart/fl_chart.dart';
 import '../theme/app_theme.dart';
 import '../services/api_service.dart';
+import '../config/api_config.dart';
 
 class MemoryStatsScreen extends StatefulWidget {
   const MemoryStatsScreen({super.key});
@@ -13,7 +14,8 @@ class MemoryStatsScreen extends StatefulWidget {
 class _MemoryStatsScreenState extends State<MemoryStatsScreen> {
   Map<String, dynamic>? _data;
   bool _loading = true;
-  String? _error;
+  String? _observation;
+  bool _observationLoading = false;
 
   @override
   void initState() {
@@ -22,12 +24,39 @@ class _MemoryStatsScreenState extends State<MemoryStatsScreen> {
   }
 
   Future<void> _load() async {
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _observation = null;
+    });
     try {
       final data = await ApiService.get('/memory/stats');
-      setState(() { _data = Map<String, dynamic>.from(data); _loading = false; });
-    } catch (e) {
-      setState(() { _error = e.toString(); _loading = false; });
+      setState(() {
+        _data = Map<String, dynamic>.from(data);
+        _loading = false;
+      });
+      _loadObservation();
+    } catch (_) {
+      setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _loadObservation() async {
+    setState(() => _observationLoading = true);
+    try {
+      final apiKey = await ApiConfig.getApiKey();
+      final aiBaseUrl = await ApiConfig.getAiBaseUrl();
+      final aiModel = await ApiConfig.getAiModel();
+      final result = await ApiService.post('/memory/diet-observation', {
+        'api_key': apiKey ?? '',
+        'ai_base_url': aiBaseUrl,
+        'ai_model': aiModel,
+      });
+      setState(() {
+        _observation = result['observation'] as String? ?? '';
+        _observationLoading = false;
+      });
+    } catch (_) {
+      setState(() => _observationLoading = false);
     }
   }
 
@@ -36,7 +65,7 @@ class _MemoryStatsScreenState extends State<MemoryStatsScreen> {
     return Scaffold(
       backgroundColor: AppColors.bg,
       appBar: AppBar(
-        title: const Text('记忆收敛分析 🧠'),
+        title: const Text('口味记忆'),
         actions: [
           GestureDetector(
             onTap: _load,
@@ -48,360 +77,440 @@ class _MemoryStatsScreenState extends State<MemoryStatsScreen> {
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: AppColors.primaryLight, width: 1.5),
               ),
-              child: const Icon(Icons.refresh_rounded, color: AppColors.primary, size: 20),
+              child: const Icon(Icons.refresh_rounded,
+                  color: AppColors.primary, size: 20),
             ),
           ),
         ],
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
-          : _error != null
-              ? Center(child: Text('加载失败：$_error', style: const TextStyle(color: AppColors.textMid)))
-              : _buildBody(),
+          ? const Center(
+              child: CircularProgressIndicator(color: AppColors.primary))
+          : _buildBody(),
     );
   }
 
   Widget _buildBody() {
+    if (_data == null) return _emptyState();
+
     final d = _data!;
-    final history = List<Map<String, dynamic>>.from(
-        (d['taste_weight_history'] as List).map((e) => Map<String, dynamic>.from(e)));
-    final scoreTrend = List<Map<String, dynamic>>.from(
-        (d['score_trend'] as List).map((e) => Map<String, dynamic>.from(e)));
     final convIndex = (d['convergence_index'] as num).toDouble();
     final current = d['current_memory'] != null
         ? Map<String, dynamic>.from(d['current_memory'])
         : null;
-    final summary = d['summary'] as String? ?? '';
+    final weights =
+        Map<String, dynamic>.from(current?['taste_weights'] as Map? ?? {});
+    final feedbackCount = current?['feedback_count'] as int? ?? 0;
 
-    return ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 24), children: [
-      _summaryCard(convIndex, current, summary),
-      const SizedBox(height: 14),
+    if (weights.isEmpty && feedbackCount == 0) return _emptyState();
 
-      if (history.length >= 2) ...[
-        _SectionHeader(emoji: '📈', title: '口味权重收敛曲线'),
-        const SizedBox(height: 4),
-        const Text('各口味标签的权重随反馈次数的变化，趋于平稳说明系统已认识你的偏好。',
-            style: TextStyle(fontSize: 12, color: AppColors.textLight)),
-        const SizedBox(height: 10),
-        ClayCard(
-          padding: const EdgeInsets.all(16),
-          child: SizedBox(height: 220, child: _weightChart(history)),
-        ),
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+      children: [
+        _convergenceCard(convIndex, feedbackCount),
         const SizedBox(height: 14),
-
-        _SectionHeader(emoji: '📉', title: '权重方差（稳定性指标）'),
-        const SizedBox(height: 4),
-        const Text('方差越低说明偏好越稳定，可用于收敛速度分析。',
-            style: TextStyle(fontSize: 12, color: AppColors.textLight)),
-        const SizedBox(height: 10),
-        ClayCard(
-          padding: const EdgeInsets.all(16),
-          child: SizedBox(height: 160, child: _varianceChart(history)),
-        ),
-        const SizedBox(height: 14),
-      ],
-
-      if (scoreTrend.length >= 2) ...[
-        _SectionHeader(emoji: '⭐', title: '推荐满意度趋势'),
-        const SizedBox(height: 4),
-        const Text('单次评分（散点）与滑动平均（折线），上升趋势说明记忆系统在改善推荐质量。',
-            style: TextStyle(fontSize: 12, color: AppColors.textLight)),
-        const SizedBox(height: 10),
-        ClayCard(
-          padding: const EdgeInsets.all(16),
-          child: SizedBox(height: 200, child: _scoreChart(scoreTrend)),
-        ),
-        const SizedBox(height: 14),
-      ],
-
-      if (history.isEmpty && scoreTrend.isEmpty)
-        ClayCard(
-          color: AppColors.yellowSoft,
-          borderColor: const Color(0xFFFFE599),
-          padding: const EdgeInsets.all(32),
-          child: const Center(
-            child: Text('还没有反馈数据 🌱\n去菜单页评价几道菜，记忆系统就会开始学习～',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: AppColors.textMid, fontSize: 14, height: 1.6)),
-          ),
-        ),
-
-      if (current != null) ...[
-        _SectionHeader(emoji: '💾', title: '当前长期记忆'),
-        const SizedBox(height: 10),
-        _currentMemoryCard(current),
-      ],
-    ]);
-  }
-
-  Widget _summaryCard(double convIndex, Map<String, dynamic>? current, String summary) {
-    final count = current?['feedback_count'] as int? ?? 0;
-    final Color color = convIndex >= 0.7 ? AppColors.green : convIndex >= 0.4 ? AppColors.yellow : AppColors.textLight;
-    final Color bgColor = convIndex >= 0.7 ? AppColors.greenSoft : convIndex >= 0.4 ? AppColors.yellowSoft : AppColors.bg;
-    final Color borderColor = convIndex >= 0.7 ? AppColors.greenLight : convIndex >= 0.4 ? const Color(0xFFFFE599) : AppColors.border;
-    final String label = convIndex >= 0.7 ? '偏好已稳定 ✓' : convIndex >= 0.4 ? '学习中...' : '数据不足';
-
-    return ClayCard(
-      color: bgColor,
-      borderColor: borderColor,
-      padding: const EdgeInsets.all(20),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('收敛指数', style: TextStyle(fontSize: 12, color: AppColors.textLight)),
-              const SizedBox(height: 4),
-              Text('${(convIndex * 100).toStringAsFixed(0)}%',
-                  style: TextStyle(fontSize: 36, fontWeight: FontWeight.w800, color: color)),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.6),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: color)),
-              ),
-            ])),
-            Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-              const Text('累计反馈', style: TextStyle(fontSize: 12, color: AppColors.textLight)),
-              const SizedBox(height: 4),
-              Text('$count 条', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: AppColors.textDark)),
-            ]),
-          ]),
-          const SizedBox(height: 12),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: LinearProgressIndicator(
-              value: convIndex,
-              minHeight: 10,
-              backgroundColor: Colors.white.withOpacity(0.5),
-              valueColor: AlwaysStoppedAnimation(color),
+        if (weights.isNotEmpty) ...[
+          _sectionHeader('☁️', '口味词云'),
+          const SizedBox(height: 10),
+          Center(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.72),
+              child: _WordCloud(weights: weights),
             ),
           ),
-          if (summary.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            Text(summary, style: const TextStyle(fontSize: 13, color: AppColors.textDark, height: 1.5)),
-          ],
-        ]),
-    );
-  }
-
-  Widget _weightChart(List<Map<String, dynamic>> history) {
-    final allTags = <String>{};
-    for (final s in history) {
-      final w = Map<String, dynamic>.from(s['weights_snapshot'] as Map);
-      allTags.addAll(w.keys);
-    }
-    final tags = allTags.toList();
-    final colors = [
-      AppColors.primary, AppColors.green, AppColors.yellow,
-      AppColors.lavender, AppColors.blue, const Color(0xFFFF8FAB),
-      const Color(0xFF80CBC4), const Color(0xFFFFCC80),
-    ];
-
-    final lines = tags.asMap().entries.map((entry) {
-      final tag = entry.value;
-      final color = colors[entry.key % colors.length];
-      final spots = <FlSpot>[];
-      for (final s in history) {
-        final w = Map<String, dynamic>.from(s['weights_snapshot'] as Map);
-        if (w.containsKey(tag)) {
-          spots.add(FlSpot((s['feedback_index'] as int).toDouble(), (w[tag] as num).toDouble()));
-        }
-      }
-      return LineChartBarData(spots: spots, isCurved: true, color: color, barWidth: 2.5,
-          dotData: const FlDotData(show: false));
-    }).toList();
-
-    return LineChart(LineChartData(
-      lineBarsData: lines,
-      minY: 0, maxY: 1,
-      gridData: FlGridData(show: true, drawVerticalLine: false,
-          getDrawingHorizontalLine: (_) => FlLine(color: AppColors.border, strokeWidth: 1, dashArray: [4, 4])),
-      borderData: FlBorderData(show: false),
-      titlesData: FlTitlesData(
-        leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 32,
-            getTitlesWidget: (v, _) => Text(v.toStringAsFixed(1),
-                style: const TextStyle(fontSize: 10, color: AppColors.textLight)))),
-        bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 20,
-            getTitlesWidget: (v, _) => Text(v.toInt().toString(),
-                style: const TextStyle(fontSize: 10, color: AppColors.textLight)))),
-        topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-        rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-      ),
-      lineTouchData: LineTouchData(
-        touchTooltipData: LineTouchTooltipData(
-          getTooltipItems: (spots) => spots.asMap().entries.map((e) {
-            final tag = tags[e.key % tags.length];
-            return LineTooltipItem('$tag\n${e.value.y.toStringAsFixed(2)}',
-                TextStyle(color: colors[e.key % colors.length], fontSize: 11));
-          }).toList(),
-        ),
-      ),
-    ));
-  }
-
-  Widget _varianceChart(List<Map<String, dynamic>> history) {
-    final spots = history.map((s) => FlSpot(
-      (s['feedback_index'] as int).toDouble(),
-      (s['variance'] as num).toDouble(),
-    )).toList();
-
-    return LineChart(LineChartData(
-      lineBarsData: [LineChartBarData(
-        spots: spots, isCurved: true,
-        color: AppColors.primary, barWidth: 2.5,
-        belowBarData: BarAreaData(show: true, color: AppColors.primary.withOpacity(0.1)),
-        dotData: const FlDotData(show: false),
-      )],
-      minY: 0,
-      gridData: FlGridData(show: true, drawVerticalLine: false,
-          getDrawingHorizontalLine: (_) => FlLine(color: AppColors.border, strokeWidth: 1, dashArray: [4, 4])),
-      borderData: FlBorderData(show: false),
-      titlesData: FlTitlesData(
-        leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 40,
-            getTitlesWidget: (v, _) => Text(v.toStringAsFixed(3),
-                style: const TextStyle(fontSize: 9, color: AppColors.textLight)))),
-        bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 20,
-            getTitlesWidget: (v, _) => Text(v.toInt().toString(),
-                style: const TextStyle(fontSize: 10, color: AppColors.textLight)))),
-        topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-        rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-      ),
-    ));
-  }
-
-  Widget _scoreChart(List<Map<String, dynamic>> scoreTrend) {
-    final scoreSpots = scoreTrend.map((s) => FlSpot(
-      (s['feedback_index'] as int).toDouble(), (s['score'] as num).toDouble(),
-    )).toList();
-    final avgSpots = scoreTrend.map((s) => FlSpot(
-      (s['feedback_index'] as int).toDouble(), (s['rolling_avg'] as num).toDouble(),
-    )).toList();
-
-    return LineChart(LineChartData(
-      lineBarsData: [
-        LineChartBarData(
-          spots: scoreSpots, isCurved: false,
-          color: AppColors.blue.withOpacity(0.4), barWidth: 0,
-          dotData: FlDotData(show: true, getDotPainter: (_, __, ___, ____) =>
-              FlDotCirclePainter(radius: 4, color: AppColors.blue.withOpacity(0.5),
-                  strokeWidth: 0, strokeColor: Colors.transparent)),
-        ),
-        LineChartBarData(
-          spots: avgSpots, isCurved: true,
-          color: AppColors.blue, barWidth: 2.5,
-          dotData: const FlDotData(show: false),
-          belowBarData: BarAreaData(show: true, color: AppColors.blue.withOpacity(0.08)),
-        ),
+          const SizedBox(height: 14),
+        ],
+        _sectionHeader('🔍', '饮食观察'),
+        const SizedBox(height: 10),
+        _observationCard(),
       ],
-      minY: 1, maxY: 5,
-      gridData: FlGridData(show: true, drawVerticalLine: false,
-          getDrawingHorizontalLine: (_) => FlLine(color: AppColors.border, strokeWidth: 1, dashArray: [4, 4])),
-      borderData: FlBorderData(show: false),
-      titlesData: FlTitlesData(
-        leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 24,
-            getTitlesWidget: (v, _) => Text(v.toInt().toString(),
-                style: const TextStyle(fontSize: 10, color: AppColors.textLight)))),
-        bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 20,
-            getTitlesWidget: (v, _) => Text(v.toInt().toString(),
-                style: const TextStyle(fontSize: 10, color: AppColors.textLight)))),
-        topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-        rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-      ),
-    ));
-  }
-
-  Widget _currentMemoryCard(Map<String, dynamic> current) {
-    final weights = Map<String, dynamic>.from(current['taste_weights'] as Map? ?? {});
-    final constraints = List<String>.from(current['hard_constraints'] as List? ?? []);
-    final goals = List<String>.from(current['health_goals'] as List? ?? []);
-    final summary = current['preference_summary'] as String? ?? '';
-
-    final sortedWeights = weights.entries.toList()
-      ..sort((a, b) => (b.value as num).compareTo(a.value as num));
-
-    return ClayCard(
-      padding: const EdgeInsets.all(16),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          if (sortedWeights.isNotEmpty) ...[
-            const Text('口味权重', style: TextStyle(fontSize: 12, color: AppColors.textLight, fontWeight: FontWeight.w600)),
-            const SizedBox(height: 8),
-            ...sortedWeights.map((e) {
-              final v = (e.value as num).toDouble();
-              final color = v >= 0.7 ? AppColors.green : v <= 0.3 ? AppColors.primary : AppColors.yellow;
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Row(children: [
-                  SizedBox(width: 72, child: Text(e.key,
-                      style: const TextStyle(fontSize: 12, color: AppColors.textDark, fontWeight: FontWeight.w600))),
-                  Expanded(child: ClipRRect(
-                    borderRadius: BorderRadius.circular(6),
-                    child: LinearProgressIndicator(
-                      value: v, minHeight: 8,
-                      backgroundColor: AppColors.border,
-                      valueColor: AlwaysStoppedAnimation(color),
-                    ),
-                  )),
-                  const SizedBox(width: 8),
-                  Text(v.toStringAsFixed(2),
-                      style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w700)),
-                ]),
-              );
-            }),
-            const SizedBox(height: 10),
-          ],
-          if (constraints.isNotEmpty) ...[
-            const Text('硬约束（绝对禁忌）', style: TextStyle(fontSize: 12, color: AppColors.textLight, fontWeight: FontWeight.w600)),
-            const SizedBox(height: 6),
-            Wrap(spacing: 6, runSpacing: 6, children: constraints.map((c) => Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFEBEB),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFFFFCCCC), width: 1.5),
-              ),
-              child: Text(c, style: const TextStyle(fontSize: 12, color: Color(0xFFE57373), fontWeight: FontWeight.w600)),
-            )).toList()),
-            const SizedBox(height: 10),
-          ],
-          if (goals.isNotEmpty) ...[
-            const Text('健康目标', style: TextStyle(fontSize: 12, color: AppColors.textLight, fontWeight: FontWeight.w600)),
-            const SizedBox(height: 6),
-            Wrap(spacing: 6, runSpacing: 6, children: goals.map((g) => Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                color: AppColors.greenSoft,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppColors.greenLight, width: 1.5),
-              ),
-              child: Text(g, style: const TextStyle(fontSize: 12, color: AppColors.green, fontWeight: FontWeight.w600)),
-            )).toList()),
-            const SizedBox(height: 10),
-          ],
-          if (summary.isNotEmpty) ...[
-            const Text('偏好摘要', style: TextStyle(fontSize: 12, color: AppColors.textLight, fontWeight: FontWeight.w600)),
-            const SizedBox(height: 6),
-            Text(summary, style: const TextStyle(fontSize: 13, color: AppColors.textDark, height: 1.5)),
-          ],
-        ]),
     );
   }
-}
 
+  Widget _emptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: HandDrawnCard(
+          color: AppColors.yellowSoft,
+          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 40),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            const Text('🌱', style: TextStyle(fontSize: 48)),
+            const SizedBox(height: 16),
+            const Text(
+              '快来告诉管家你的偏好吧',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textDark),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              '去菜单页评价几道菜，记忆系统就会开始学习～',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                  fontSize: 13, color: AppColors.textMid, height: 1.6),
+            ),
+          ]),
+        ),
+      ),
+    );
+  }
 
+  Widget _convergenceCard(double convIndex, int feedbackCount) {
+    final Color color = convIndex >= 0.7
+        ? AppColors.green
+        : convIndex >= 0.4
+            ? AppColors.yellow
+            : AppColors.textLight;
+    final Color bgColor = convIndex >= 0.7
+        ? AppColors.greenSoft
+        : convIndex >= 0.4
+            ? AppColors.yellowSoft
+            : AppColors.bg;
+    final Color borderColor = convIndex >= 0.7
+        ? AppColors.greenLight
+        : convIndex >= 0.4
+            ? const Color(0xFFFFE599)
+            : AppColors.border;
+    final String label = convIndex >= 0.7
+        ? '偏好已稳定 ✓'
+        : convIndex >= 0.4
+            ? '学习中...'
+            : '数据不足';
 
-class _SectionHeader extends StatelessWidget {
-  final String emoji;
-  final String title;
+    return HandDrawnCard(
+      color: bgColor,
+      padding: const EdgeInsets.all(20),
+      child: Row(children: [
+        Expanded(
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text('收敛指数',
+                style: TextStyle(fontSize: 12, color: AppColors.textLight)),
+            const SizedBox(height: 4),
+            Text(
+              '${(convIndex * 100).toStringAsFixed(0)}%',
+              style: TextStyle(
+                  fontSize: 36, fontWeight: FontWeight.w800, color: color),
+            ),
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.6),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(label,
+                  style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: color)),
+            ),
+          ]),
+        ),
+        Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+          const Text('累计反馈',
+              style: TextStyle(fontSize: 12, color: AppColors.textLight)),
+          const SizedBox(height: 4),
+          Text('$feedbackCount 条',
+              style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textDark)),
+        ]),
+      ]),
+    );
+  }
 
-  const _SectionHeader({required this.emoji, required this.title});
+  Widget _observationCard() {
+    if (_observationLoading) {
+      return HandDrawnCard(
+        padding: const EdgeInsets.all(24),
+        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: const [
+          SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(
+                  strokeWidth: 2, color: AppColors.primary)),
+          SizedBox(width: 12),
+          Text('管家正在观察你的口味...',
+              style: TextStyle(fontSize: 13, color: AppColors.textMid)),
+        ]),
+      );
+    }
+    final text = _observation ?? '';
+    if (text.isEmpty) {
+      return HandDrawnCard(
+        padding: const EdgeInsets.all(20),
+        child: const Text('暂无观察数据',
+            style: TextStyle(fontSize: 13, color: AppColors.textLight)),
+      );
+    }
+    return HandDrawnCard(
+      color: AppColors.primarySoft,
+      padding: const EdgeInsets.all(20),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const Text('🤖', style: TextStyle(fontSize: 22)),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(text,
+              style: const TextStyle(
+                  fontSize: 14, color: AppColors.textDark, height: 1.7)),
+        ),
+      ]),
+    );
+  }
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _sectionHeader(String emoji, String title) {
     return Row(children: [
       Text(emoji, style: const TextStyle(fontSize: 18)),
       const SizedBox(width: 8),
-      Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.textDark)),
+      Text(title,
+          style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+              color: AppColors.textDark)),
     ]);
   }
+}
+
+// ── 词云 ─────────────────────────────────────────────────────
+class _PlacedWord {
+  final String text;
+  final Offset offset;
+  final double fontSize;
+  final FontWeight fontWeight;
+  final Color color;
+  const _PlacedWord({
+    required this.text,
+    required this.offset,
+    required this.fontSize,
+    required this.fontWeight,
+    required this.color,
+  });
+}
+
+class _WordCloud extends StatefulWidget {
+  final Map<String, dynamic> weights;
+  const _WordCloud({required this.weights});
+  @override
+  State<_WordCloud> createState() => _WordCloudState();
+}
+
+class _WordCloudState extends State<_WordCloud> {
+  List<_PlacedWord> _placed = [];
+  double _computedWidth = 0;
+  double _canvasH = 0;
+
+  // 拉开色差：深红 → 中橙 → 亮橙 → 暖黄，参考 HTML 词云配色
+  static const _colors = [
+    Color(0xFF8B2500), // 深砖红
+    Color(0xFFE76F51), // 珊瑚橙
+    Color(0xFFE9C46A), // 暖黄
+    Color(0xFFC4451F), // 深橙红
+    Color(0xFFF4A261), // 浅橙
+    Color(0xFF6B1A00), // 暗红
+    Color(0xFFFFB347), // 金橙黄
+    Color(0xFFD96C3A), // 中橙
+    Color(0xFFF2C94C), // 亮黄
+    Color(0xFFB03A00), // 棕红
+    Color(0xFFF38D68), // 粉橙
+    Color(0xFF7A1F00), // 深酒红
+    Color(0xFFE07A3C), // 橙棕
+    Color(0xFFFFD166), // 黄油黄
+    Color(0xFFCC4A1A), // 红橙
+  ];
+
+  void _layout(double canvasW) {
+    if ((canvasW - _computedWidth).abs() < 1) return;
+    _computedWidth = canvasW;
+
+    // 初始画布高度用于布局计算，正方形画布
+    final canvasH = canvasW;
+
+    // 网格法防重叠，gridSize = 10px，和 wordcloud2.js gridSize:12 同原理
+    const gs = 10;
+    final gw = (canvasW / gs).ceil() + 2;
+    final gh = (canvasH / gs).ceil() + 2;
+    final grid = List.filled(gw * gh, false);
+
+    bool canPlace(Rect r) {
+      // 检查时额外留 1 格间距
+      final x0 = (r.left / gs).floor() - 1;
+      final y0 = (r.top / gs).floor() - 1;
+      final x1 = (r.right / gs).ceil() + 1;
+      final y1 = (r.bottom / gs).ceil() + 1;
+      for (int gy = y0; gy <= y1; gy++) {
+        for (int gx = x0; gx <= x1; gx++) {
+          if (gx < 0 || gy < 0 || gx >= gw || gy >= gh) return false;
+          if (grid[gy * gw + gx]) return false;
+        }
+      }
+      return true;
+    }
+
+    void markGrid(Rect r) {
+      final x0 = max(0, (r.left / gs).floor());
+      final y0 = max(0, (r.top / gs).floor());
+      final x1 = min(gw - 1, (r.right / gs).ceil());
+      final y1 = min(gh - 1, (r.bottom / gs).ceil());
+      for (int gy = y0; gy <= y1; gy++) {
+        for (int gx = x0; gx <= x1; gx++) {
+          grid[gy * gw + gx] = true;
+        }
+      }
+    }
+
+    // 去重
+    final seen = <String>{};
+    final sorted = widget.weights.entries
+        .map((e) => MapEntry(e.key, (e.value as num).toDouble()))
+        .toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    final unique = sorted.where((e) => seen.add(e.key)).toList();
+    final n = unique.length;
+    if (n == 0) return;
+
+    // 字号范围随词数自适应
+    final double maxFs = n <= 5 ? 44 : n <= 10 ? 34 : n <= 15 ? 26 : 20;
+    final double minFs = n <= 5 ? 22 : n <= 10 ? 16 : n <= 15 ? 12 : 10;
+
+    final placed = <_PlacedWord>[];
+    final cx = canvasW / 2;
+    final cy = canvasH / 2;
+    // 螺旋扩张系数，控制词云密度
+    final double a = canvasW / (2 * pi * 16);
+
+    for (int i = 0; i < unique.length; i++) {
+      final tag = unique[i].key;
+      final w = unique[i].value.clamp(0.0, 1.0);
+      final fontSize = minFs + w * (maxFs - minFs);
+      final color = _colors[i % _colors.length];
+      final fw = w >= 0.65 ? FontWeight.w800 : w >= 0.4 ? FontWeight.w700 : FontWeight.w500;
+
+      final tp = TextPainter(
+        text: TextSpan(text: tag, style: TextStyle(fontSize: fontSize, fontWeight: fw, color: color)),
+        textDirection: TextDirection.ltr,
+      )..layout();
+
+      double t = 0;
+      while (t < 1000) {
+        // y 轴乘 0.85 产生轻微椭圆感，和 HTML ellipticity:0.85 一致
+        final px = cx + a * t * cos(t) - tp.width / 2;
+        final py = cy + a * t * sin(t) * 0.85 - tp.height / 2;
+        final rect = Rect.fromLTWH(px, py, tp.width, tp.height);
+
+        if (rect.left >= 4 && rect.top >= 4 &&
+            rect.right <= canvasW - 4 && rect.bottom <= canvasH - 4) {
+          if (canPlace(rect)) {
+            markGrid(rect);
+            placed.add(_PlacedWord(
+              text: tag, offset: Offset(px, py),
+              fontSize: fontSize, fontWeight: fw, color: color,
+            ));
+            break;
+          }
+        }
+        t += 0.1;
+      }
+    }
+
+    if (placed.isEmpty) return;
+
+    // 计算实际内容边界，裁掉多余空白
+    double minY = double.infinity, maxY = 0;
+    double minX = double.infinity, maxX = 0;
+    for (final pw in placed) {
+      final tp2 = TextPainter(
+        text: TextSpan(text: pw.text, style: TextStyle(fontSize: pw.fontSize, fontWeight: pw.fontWeight)),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      minY = min(minY, pw.offset.dy);
+      maxY = max(maxY, pw.offset.dy + tp2.height);
+      minX = min(minX, pw.offset.dx);
+      maxX = max(maxX, pw.offset.dx + tp2.width);
+    }
+
+    const pad = 14.0;
+    final shiftY = minY - pad;
+    // 水平居中偏移
+    final contentCx = (minX + maxX) / 2;
+    final shiftX = contentCx - canvasW / 2;
+
+    final adjusted = placed.map((pw) => _PlacedWord(
+      text: pw.text,
+      offset: Offset(pw.offset.dx - shiftX, pw.offset.dy - shiftY),
+      fontSize: pw.fontSize,
+      fontWeight: pw.fontWeight,
+      color: pw.color,
+    )).toList();
+
+    final actualH = (maxY - shiftY + pad).clamp(80.0, canvasW * 1.0);
+
+    setState(() {
+      _placed = adjusted;
+      _canvasH = actualH;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(builder: (context, constraints) {
+      final w = constraints.maxWidth;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _layout(w));
+
+      if (_canvasH == 0) return const SizedBox(height: 120);
+
+      return CustomPaint(
+        foregroundPainter: DashedBorderPainter(
+          color: SketchColors.lineBrown,
+          strokeWidth: 2.5,
+          dashWidth: 8,
+          dashSpace: 5,
+          wobble: 1.2,
+        ),
+        child: Container(
+          decoration: const BoxDecoration(
+            color: AppColors.bgCard,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.elliptical(40, 20),
+              topRight: Radius.elliptical(15, 50),
+              bottomRight: Radius.elliptical(50, 15),
+              bottomLeft: Radius.elliptical(20, 40),
+            ),
+            boxShadow: [
+              BoxShadow(color: Color(0x1A8D6E63), offset: Offset(8, 8), blurRadius: 0),
+            ],
+          ),
+          width: w,
+          height: _canvasH,
+          child: CustomPaint(painter: _WordCloudPainter(placed: _placed)),
+        ),
+      );
+    });
+  }
+}
+
+class _WordCloudPainter extends CustomPainter {
+  final List<_PlacedWord> placed;
+  const _WordCloudPainter({required this.placed});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    for (final pw in placed) {
+      final tp = TextPainter(
+        text: TextSpan(
+          text: pw.text,
+          style: TextStyle(fontSize: pw.fontSize, fontWeight: pw.fontWeight, color: pw.color),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      tp.paint(canvas, pw.offset);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_WordCloudPainter old) => placed != old.placed;
 }

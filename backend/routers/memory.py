@@ -1,7 +1,10 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
+from pydantic import BaseModel
+from typing import Optional
 from backend.database import get_db
 from backend.models import UserMemory, Feedback
+from backend.services import ai_service
 import json
 import math
 
@@ -10,6 +13,24 @@ import math
 
 router = APIRouter(prefix="/memory", tags=["memory"])
 DECAY = 0.9
+
+# 笼统模糊标签黑名单，不应出现在词云中
+_VAGUE_TAGS = {
+    "适合我的口味", "符合偏好", "好吃", "不错", "很好", "喜欢", "推荐",
+    "满意", "适合", "符合", "口味好", "味道好", "很棒", "好", "棒", "赞",
+    "完美", "优秀", "一般", "还行", "不错吃", "挺好", "还可以", "可以",
+}
+_VAGUE_KEYWORDS = ["口味", "偏好", "推荐", "适合", "符合", "满意", "喜欢", "风格"]
+
+
+def _filter_weights(weights: dict) -> dict:
+    """过滤笼统模糊的口味标签"""
+    return {
+        tag: w for tag, w in weights.items()
+        if tag not in _VAGUE_TAGS
+        and len(tag) <= 8
+        and not any(kw in tag for kw in _VAGUE_KEYWORDS)
+    }
 
 #接受用户的历史反馈列表（按时间顺序），逐步重放每次反馈对口味权重的影响，并记录下每次反馈后的权重快照及统计信息（方差）。
 #最终返回一个快照列表，用于前端可视化或收敛性分析。
@@ -188,7 +209,7 @@ def memory_stats(db: Session = Depends(get_db)):
         "score_trend": score_trend,#每条反馈的原始评分和滑动平均分，用于观察用户满意度变化趋势
         "convergence_index": conv_index,#收敛指数
         "current_memory": {
-            "taste_weights": memory.get_taste_weights(),
+            "taste_weights": _filter_weights(memory.get_taste_weights()),
             "hard_constraints": memory.get_hard_constraints(),
             "health_goals": memory.get_health_goals(),
             "preference_summary": memory.preference_summary or "",
@@ -197,3 +218,67 @@ def memory_stats(db: Session = Depends(get_db)):
         "ab_comparison": ab_comparison,#一个json，对比不同推荐模式
         "summary": summary,
     }
+
+
+class DietObservationRequest(BaseModel):
+    api_key: str
+    ai_base_url: Optional[str] = None
+    ai_model: Optional[str] = None
+
+
+@router.post("/diet-observation")
+def diet_observation(req: DietObservationRequest, db: Session = Depends(get_db)):
+    """根据用户口味权重和收敛指数，让 AI 生成一段饮食观察文字"""
+    memory = db.query(UserMemory).first()
+    if not memory:
+        return {"observation": "快来告诉管家你的偏好吧～"}
+
+    taste_weights = _filter_weights(memory.get_taste_weights())
+    feedback_history = memory.get_feedback_history()
+    feedback_count = len(feedback_history)
+
+    if not taste_weights or feedback_count == 0:
+        return {"observation": "快来告诉管家你的偏好吧～"}
+
+    snapshots = _replay_weights(feedback_history)
+    conv_index = _convergence_index(snapshots)
+
+    # 按权重排序，取前10个标签
+    sorted_weights = sorted(taste_weights.items(), key=lambda x: x[1], reverse=True)[:10]
+    weights_desc = "、".join(f"{tag}({round(w, 2)})" for tag, w in sorted_weights)
+
+    hard_constraints = memory.get_hard_constraints()
+    health_goals = memory.get_health_goals()
+
+    prompt = f"""你是用户的私人饮食管家，请根据以下数据，用温暖亲切的语气写一段"饮食观察"（100-150字），
+总结用户的口味偏好，并告诉用户接下来会怎么推荐菜肴。不要用列表，用自然段落。
+
+口味权重（标签:权重，越高越偏好）：{weights_desc}
+收敛指数：{round(conv_index * 100)}%（越高说明偏好越稳定）
+累计反馈：{feedback_count} 条
+硬约束（绝对不吃）：{', '.join(hard_constraints) if hard_constraints else '无'}
+健康目标：{', '.join(health_goals) if health_goals else '无'}
+
+请直接输出观察文字，不要加标题或前缀。"""
+
+    try:
+        observation = ai_service._post(
+            api_key=req.api_key,
+            base_url=req.ai_base_url,
+            payload={
+                "model": req.ai_model,
+                "max_tokens": 300,
+                "messages": [{"role": "user", "content": prompt}],
+            },
+        )
+        return {"observation": observation}
+    except Exception as e:
+        # 降级：返回基于规则的文字
+        top_tags = [tag for tag, _ in sorted_weights[:3]]
+        conv_label = "已基本稳定" if conv_index >= 0.7 else "仍在学习中"
+        fallback = (
+            f"根据你的 {feedback_count} 条反馈，管家发现你特别偏爱{('、'.join(top_tags)) if top_tags else '多种口味'}。"
+            f"你的口味偏好{conv_label}（收敛指数 {round(conv_index * 100)}%）。"
+            f"接下来管家会优先推荐符合这些偏好的菜肴，同时兼顾营养均衡。"
+        )
+        return {"observation": fallback}

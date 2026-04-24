@@ -30,6 +30,7 @@ class AgentChatRequest(BaseModel):
     serper_api_key: Optional[str] = None
 
 #向 OpenAI 兼容端点发送请求（含工具调用）
+#参数：apikey,url,历史对话message，系统提示，模型名，失败重试次数
 async def _post_with_tools(api_key: str, base_url: str, messages: list, system: str, model: str = None, retries: int = 3) -> dict:
     """发送 OpenAI 兼容格式请求，返回统一的内部格式"""
     if not api_key or not base_url:
@@ -176,8 +177,9 @@ def _build_system_prompt(db: Session) -> str:
 @router.post("/chat")
 #参数：AgentChatRequest对象，数据库会话
 async def agent_chat(req: AgentChatRequest, db: Session = Depends(get_db)):
-    #构建系统提示词
+    
     print(f"[Agent] chat: api_key={'***'+req.api_key[-4:] if req.api_key else 'EMPTY'} base_url={req.ai_base_url}")
+    #构建系统提示词
     system_prompt = _build_system_prompt(db)
     #获取外部API KEY，打包成字典
     external_keys = {
@@ -185,7 +187,7 @@ async def agent_chat(req: AgentChatRequest, db: Session = Depends(get_db)):
         "serper_api_key": req.serper_api_key,
     }
 
-    #创建对话消息列表，将对话历史（req.history）转换成claudeAPI要求的messages格式
+    #创建对话消息列表，将对话历史（req.history）转换成LLM API要求的messages格式
     messages = []
     #只保留 role 为 "user" 或 "assistant" 且 content 非空的消息
     #追加用户本次发送的消息作为最后一条user消息
@@ -202,7 +204,7 @@ async def agent_chat(req: AgentChatRequest, db: Session = Depends(get_db)):
     #工具调用循环（最多六轮）
     for _round in range(MAX_TOOL_ROUNDS):
         try:
-            #在这里用到了_post_with_tools，向claudeAPI发送请求，得到的回应是response，这个response是json格式
+            #在这里用到了_post_with_tools，向API发送请求，得到的回应是response，这个response是json格式
             #这里面就包含了tool需要的参数字段和其他（比如stop_reason）必要字段
             response = await _post_with_tools(
                 api_key=req.api_key,
