@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from backend.database import get_db
 from backend.models import FeedbackSchema, Feedback, DietAdviceRequest, UserProfile, NutritionLog, Ingredient, UserMemory
 from backend.services import ai_service
+from backend.services import rl_service
 import httpx
 
 #FastAPI路由模块，实现了普通（非agent模式）的AI辅助功能
@@ -58,16 +59,17 @@ def submit_feedback(data: FeedbackSchema, db: Session = Depends(get_db),
                     x_api_key: str = Header(default=None),
                     x_ai_base_url: str = Header(default=None),
                     x_ai_model: str = Header(default=None)):
-    fb = Feedback(**data.model_dump())
+    fb_data = data.model_dump()
+    fb_data.pop("trajectory_id", None)  # trajectory_id 不入 Feedback 表
+    fb = Feedback(**fb_data)
     db.add(fb)
     db.commit()
     db.refresh(fb)
 
+    tags = ""
     # 提取口味标签，更新长期记忆
     if x_api_key:
         try:
-            # 统一走 AI 提取：把所有评价信息（评分、预设标签、文字评论）喂给模型
-            # 模型只提取口味特征词，评分决定权重方向（高分→权重上升，低分→权重下降）
             tags = ai_service.extract_feedback_tags(
                 api_key=x_api_key,
                 recipe_name=data.recipe_name,
@@ -93,6 +95,22 @@ def submit_feedback(data: FeedbackSchema, db: Session = Depends(get_db),
                 db.commit()
         except Exception:
             pass  # 写回失败不影响反馈保存
+
+    # 离线RL：补全轨迹奖励
+    if data.trajectory_id:
+        try:
+            rl_service.fill_trajectory_reward(
+                db=db,
+                trajectory_id=data.trajectory_id,
+                user_score=data.score,
+                recipe_tags=tags,
+            )
+            # 检查是否触发离线学习
+            if rl_service.should_trigger_learning(db):
+                result = rl_service.run_offline_learning(db)
+                print(f"[RL] 离线学习完成：{result}")
+        except Exception as e:
+            print(f"[RL] 轨迹/学习处理失败（不影响反馈）: {e}")
 
     return fb
 

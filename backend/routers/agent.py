@@ -10,6 +10,7 @@ from backend.database import get_db
 from backend.models import UserProfile, Ingredient, NutritionLog, UserMemory
 from backend.services.tool_service import TOOL_SCHEMAS, execute_tool
 from backend.services import ai_service
+from backend.services import rl_service
 
 #tools calling，使用 OpenAI 兼容格式的工具调用能力
 
@@ -306,11 +307,39 @@ def _fallback_recommend(req, db: Session, tool_calls_log: list):
         cycle_days = profile.cycle_days if profile else 7
         start = (date.today() - timedelta(days=cycle_days - 1)).isoformat()
         logs = db.query(NutritionLog).filter(NutritionLog.date >= start, NutritionLog.date <= today).all()
+        recent_recipes = list({l.recipe_name for l in logs if l.recipe_name})
+        nutrition_state = {}
+        if logs:
+            avg_fat = sum(l.fat for l in logs) / max(cycle_days, 1)
+            avg_protein = sum(l.protein for l in logs) / max(cycle_days, 1)
+            nutrition_state = {
+                "fat_level": "偏高" if avg_fat > 60 else ("偏低" if avg_fat < 30 else "正常"),
+                "protein_level": "偏低" if avg_protein < 50 else ("充足" if avg_protein >= 60 else "正常"),
+            }
         short_term = {
-            "cycle_nutrition": {},
+            "cycle_nutrition": nutrition_state,
             "today_meals": [{"recipe_name": l.recipe_name, "meal_type": l.meal_type, "calories": l.calories} for l in logs if l.date == today],
-            "recent_recipes": list({l.recipe_name for l in logs if l.recipe_name}),
+            "recent_recipes": recent_recipes,
         }
+
+        # 离线RL：查策略
+        state_snapshot = rl_service.build_state_snapshot(
+            memory=memory,
+            recent_recipes=recent_recipes,
+            nutrition_state=nutrition_state,
+            meal_type=req.occasion,
+        )
+        rl_strategy = rl_service.get_prompt_strategy(db, state_snapshot)
+        extra_parts = []
+        if rl_strategy.get("emphasis"):
+            extra_parts.append(rl_strategy["emphasis"])
+        if rl_strategy.get("diversity_boost"):
+            extra_parts.append("请注意推荐与近期不重复的菜肴，增加多样性")
+        if rl_strategy.get("nutrition_focus") == "protein":
+            extra_parts.append("本次请特别注重蛋白质摄入")
+        elif rl_strategy.get("nutrition_focus") == "low_fat":
+            extra_parts.append("本次请特别注重低脂饮食")
+        rl_extra = "；".join(extra_parts)
 
         result = ai_service.recommend_recipes(
             api_key=req.api_key,
@@ -323,17 +352,29 @@ def _fallback_recommend(req, db: Session, tool_calls_log: list):
             long_term_memory=long_term,
             short_term_memory=short_term,
             model=req.ai_model,
+            rl_extra_instruction=rl_extra,
         )
+
+        # 离线RL：记录轨迹
+        recommended_names = []
+        if isinstance(result, list):
+            recommended_names = [r.get("name", "") for r in result if isinstance(r, dict)]
+        elif isinstance(result, dict):
+            recommended_names = (
+                [r.get("name", "") for r in result.get("dishes", [])]
+                + [r.get("name", "") for r in result.get("staples", [])]
+            )
+        trajectory_id = rl_service.record_trajectory(db, state_snapshot, rl_strategy, recommended_names)
 
         if isinstance(result, list):
             result = ai_service.attach_recipe_preview_images(result, req.image_api_key, req.image_base_url)
-            return {"recipes": result, "source": "agent_fallback", "tool_calls": tool_calls_log}
+            return {"recipes": result, "source": "agent_fallback", "tool_calls": tool_calls_log, "trajectory_id": trajectory_id}
         if isinstance(result, dict):
             if "dishes" in result:
                 result["dishes"] = ai_service.attach_recipe_preview_images(result.get("dishes", []), req.image_api_key, req.image_base_url)
             if "staples" in result:
                 result["staples"] = ai_service.attach_recipe_preview_images(result.get("staples", []), req.image_api_key, req.image_base_url)
-        return {**result, "source": "agent_fallback", "tool_calls": tool_calls_log}
+        return {**result, "source": "agent_fallback", "tool_calls": tool_calls_log, "trajectory_id": trajectory_id}
     except Exception as e:
         print(f"[Agent] fallback 也失败: {e}")
         raise HTTPException(status_code=500, detail=f"AI 调用失败（含降级）: {str(e)}")
@@ -351,8 +392,40 @@ async def agent_recommend(req: AgentRecommendRequest, db: Session = Depends(get_
     has_weather = bool(req.weather_api_key)
     has_search = bool(req.serper_api_key)
 
+    # 离线RL：提前构建状态快照和策略（用于注入 system prompt 和记录轨迹）
+    memory = db.query(UserMemory).first()
+    today = date.today().isoformat()
+    profile = db.query(UserProfile).first()
+    cycle_days = profile.cycle_days if profile else 7
+    start = (date.today() - timedelta(days=cycle_days - 1)).isoformat()
+    logs = db.query(NutritionLog).filter(NutritionLog.date >= start, NutritionLog.date <= today).all()
+    recent_recipes = list({l.recipe_name for l in logs if l.recipe_name})
+    avg_fat = sum(l.fat for l in logs) / max(cycle_days, 1) if logs else 0
+    avg_protein = sum(l.protein for l in logs) / max(cycle_days, 1) if logs else 0
+    nutrition_state = {
+        "fat_level": "偏高" if avg_fat > 60 else ("偏低" if avg_fat < 30 else "正常"),
+        "protein_level": "偏低" if avg_protein < 50 else ("充足" if avg_protein >= 60 else "正常"),
+    }
+    state_snapshot = rl_service.build_state_snapshot(
+        memory=memory,
+        recent_recipes=recent_recipes,
+        nutrition_state=nutrition_state,
+        meal_type=req.occasion,
+    )
+    rl_strategy = rl_service.get_prompt_strategy(db, state_snapshot)
+    rl_parts = []
+    if rl_strategy.get("emphasis"):
+        rl_parts.append(rl_strategy["emphasis"])
+    if rl_strategy.get("diversity_boost"):
+        rl_parts.append("请注意推荐与近期不重复的菜肴，增加多样性")
+    if rl_strategy.get("nutrition_focus") == "protein":
+        rl_parts.append("本次请特别注重蛋白质摄入")
+    elif rl_strategy.get("nutrition_focus") == "low_fat":
+        rl_parts.append("本次请特别注重低脂饮食")
+    rl_instruction = ("【策略指令】" + "；".join(rl_parts) + "\n") if rl_parts else ""
+
     system_prompt = f"""你是一位专业营养师 Agent，拥有工具调用能力。
-推荐菜单前，你可以主动调用工具：
+{rl_instruction}推荐菜单前，你可以主动调用工具：
 1. 调用 get_user_memory 了解用户偏好、禁忌和健康目标
 2. 调用 get_fridge_contents 查看可用食材
 3. 调用 get_nutrition_history 了解近期饮食状态
@@ -442,11 +515,21 @@ async def agent_recommend(req: AgentRecommendRequest, db: Session = Depends(get_
                         req.image_api_key,
                         req.image_base_url,
                     )
+            # 离线RL：记录轨迹
+            recommended_names = []
+            if isinstance(result, dict):
+                recommended_names = (
+                    [r.get("name", "") for r in result.get("dishes", [])]
+                    + [r.get("name", "") for r in result.get("staples", [])]
+                )
+            trajectory_id = rl_service.record_trajectory(db, state_snapshot, rl_strategy, recommended_names)
+
             return {
                 **result,
                 "source": "agent",
                 "tool_calls": tool_calls_log,
                 "rounds": _round + 1,
+                "trajectory_id": trajectory_id,
             }
 
         if stop_reason == "tool_use":

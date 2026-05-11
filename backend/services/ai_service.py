@@ -53,6 +53,7 @@ def recommend_recipes(
     long_term_memory: dict = None,
     short_term_memory: dict = None,
     model: str = None,
+    rl_extra_instruction: str = "",
 ) -> dict:
     fridge_str = ", ".join(i["name"] for i in fridge_items) if fridge_items else "未知"
 
@@ -111,6 +112,7 @@ def recommend_recipes(
     feedback_str = f"\n用户反馈（请据此调整）：{feedback}" if feedback and feedback.strip() else ""
     advice_str = f"\n营养建议（请据此调整营养侧重）：{nutrition_advice}" if nutrition_advice and nutrition_advice.strip() else ""
     pref_str = f"\n【特殊需求，必须严格遵守】：{preferences}" if preferences and preferences.strip() else ""
+    rl_str = f"\n【本次推荐策略指令】：{rl_extra_instruction}" if rl_extra_instruction and rl_extra_instruction.strip() else ""
 
     prompt = f"""你是一位专业营养师，请根据用户需求推荐菜肴和主食，让用户自由搭配。
 
@@ -118,7 +120,7 @@ def recommend_recipes(
 用餐人数：{people_count}人
 冰箱食材：{fridge_str}
 【用户长期偏好（长期记忆）】
-{profile_str}{pref_str}{short_term_block}{feedback_str}{advice_str}
+{profile_str}{pref_str}{short_term_block}{feedback_str}{advice_str}{rl_str}
 
 请返回以下JSON格式（不要其他文字）：
 {{

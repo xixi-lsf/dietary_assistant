@@ -210,6 +210,7 @@ class FeedbackSchema(BaseModel):
     feedback_level: str = "quick"
     quick_reason: str = ""
     recommendation_mode: str = "hardcoded"
+    trajectory_id: Optional[int] = None  # 关联本次推荐的轨迹ID
 
     class Config:
         from_attributes = True
@@ -266,3 +267,51 @@ class FavoriteSchema(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# ── 离线RL相关表 ──────────────────────────────────────────────
+
+class RecommendationTrajectory(Base):
+    """每次推荐的完整轨迹记录：状态快照 + 使用的prompt策略 + 奖励"""
+    __tablename__ = "recommendation_trajectory"
+    id = Column(Integer, primary_key=True, index=True)
+    # 推荐时的状态快照（JSON）
+    # 包含：taste_weights, nutrition_state, recent_recipes, meal_type
+    state_snapshot = Column(Text, default="{}")
+    # 本次使用的prompt策略（JSON）
+    # 包含：emphasis（强调方向）, diversity_boost, nutrition_focus
+    prompt_strategy = Column(Text, default="{}")
+    # 推荐的菜名列表（JSON）
+    recommended_recipes = Column(Text, default="[]")
+    # 奖励函数计算出的标量奖励，反馈回来后填入，初始为 None
+    reward = Column(Float, default=None)
+    # 用户原始评分（1-5），冗余存储方便分析
+    user_score = Column(Integer, default=None)
+    created_at = Column(DateTime, server_default=func.now())
+
+    def get_state(self) -> dict:
+        return json.loads(self.state_snapshot or "{}")
+
+    def get_strategy(self) -> dict:
+        return json.loads(self.prompt_strategy or "{}")
+
+    def get_recipes(self) -> list:
+        return json.loads(self.recommended_recipes or "[]")
+
+
+class PromptStrategyPolicy(Base):
+    """离线学习后得出的策略表：在什么状态下用什么prompt策略"""
+    __tablename__ = "prompt_strategy_policy"
+    id = Column(Integer, primary_key=True, index=True)
+    # 状态键，格式："{nutrition_state}_{dominant_taste}"，如 "protein_low_清淡"
+    state_key = Column(String, nullable=False, unique=True)
+    # 最优策略（JSON）：{"emphasis": "高蛋白", "diversity_boost": true, "nutrition_focus": "protein"}
+    best_strategy = Column(Text, default="{}")
+    # 该策略的平均奖励
+    avg_reward = Column(Float, default=0.0)
+    # 样本数量
+    sample_count = Column(Integer, default=0)
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    def get_strategy(self) -> dict:
+        return json.loads(self.best_strategy or "{}")

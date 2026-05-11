@@ -4,6 +4,7 @@ from datetime import date, timedelta
 from backend.database import get_db
 from backend.models import MenuRequest, RecipeDetailRequest, BanquetRequest, UserProfile, Ingredient, NutritionLog, UserMemory
 from backend.services import ai_service
+from backend.services import rl_service
 
 
 #负责食谱相关的 AI 智能推荐、详细步骤生成（含图片）、宴席菜单推荐等功能
@@ -95,6 +96,30 @@ def recommend_recipes(req: MenuRequest, db: Session = Depends(get_db)):
                 "recent_recipes": recent_recipes,
             }
 
+            # 离线RL：构建状态快照，查询最优prompt策略
+            state_snapshot = rl_service.build_state_snapshot(
+                memory=memory,
+                recent_recipes=recent_recipes,
+                nutrition_state=short_term["cycle_nutrition"],
+                meal_type=req.occasion,
+            )
+            rl_strategy = rl_service.get_prompt_strategy(db, state_snapshot)
+
+            # 把策略转成额外的 prompt 指令注入
+            rl_emphasis = rl_strategy.get("emphasis", "")
+            rl_diversity = rl_strategy.get("diversity_boost", False)
+            rl_nutrition_focus = rl_strategy.get("nutrition_focus", "")
+            extra_instructions = []
+            if rl_emphasis:
+                extra_instructions.append(rl_emphasis)
+            if rl_diversity:
+                extra_instructions.append("请注意推荐与近期不重复的菜肴，增加多样性")
+            if rl_nutrition_focus == "protein":
+                extra_instructions.append("本次请特别注重蛋白质摄入")
+            elif rl_nutrition_focus == "low_fat":
+                extra_instructions.append("本次请特别注重低脂饮食")
+            rl_extra = "；".join(extra_instructions)
+
             #发送请求调用AI服务
             result = ai_service.recommend_recipes(
                 api_key=req.api_key,
@@ -109,14 +134,31 @@ def recommend_recipes(req: MenuRequest, db: Session = Depends(get_db)):
                 long_term_memory=long_term,
                 short_term_memory=short_term,
                 model=req.ai_model,
+                rl_extra_instruction=rl_extra,
             )
+            # 离线RL：提取推荐菜名，记录轨迹
+            recommended_names = []
+            if isinstance(result, list):
+                recommended_names = [r.get("name", "") for r in result if isinstance(r, dict)]
+            elif isinstance(result, dict):
+                recommended_names = (
+                    [r.get("name", "") for r in result.get("dishes", [])]
+                    + [r.get("name", "") for r in result.get("staples", [])]
+                )
+            trajectory_id = rl_service.record_trajectory(
+                db=db,
+                state=state_snapshot,
+                strategy=rl_strategy,
+                recommended_recipes=recommended_names,
+            )
+
             if isinstance(result, list):
                 result = ai_service.attach_recipe_preview_images(
                     result,
                     req.image_api_key,
                     req.image_base_url,
                 )
-                return {"recipes": result, "source": "claude"}
+                return {"recipes": result, "source": "claude", "trajectory_id": trajectory_id}
             if isinstance(result, dict):
                 if "dishes" in result:
                     result["dishes"] = ai_service.attach_recipe_preview_images(
@@ -130,7 +172,7 @@ def recommend_recipes(req: MenuRequest, db: Session = Depends(get_db)):
                         req.image_api_key,
                         req.image_base_url,
                     )
-            return {**result, "source": "claude"}
+            return {**result, "source": "claude", "trajectory_id": trajectory_id}
         except Exception as e:
             print(f"[DEBUG] AI error: {type(e).__name__}: {e}")
             raise HTTPException(status_code=500, detail=f"AI 调用失败: {str(e)}")

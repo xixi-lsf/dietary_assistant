@@ -22,7 +22,7 @@ def get_db():
 
 #调用 Base.metadata.create_all(bind=engine) 创建所有表
 def init_db():
-    from backend.models import UserProfile, Ingredient, NutritionLog, Feedback, Favorite, UserMemory
+    from backend.models import UserProfile, Ingredient, NutritionLog, Feedback, Favorite, UserMemory, RecommendationTrajectory, PromptStrategyPolicy
     Base.metadata.create_all(bind=engine)
 
     # 迁移：为已有表添加新列（SQLite 不支持 ALTER TABLE ADD COLUMN IF NOT EXISTS，逐一尝试）
